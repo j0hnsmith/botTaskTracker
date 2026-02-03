@@ -1,0 +1,7 @@
+*.db
+*.db-*
+*_templ.go
+static/
+node_modules/
+tmp/
+.DS_Store
