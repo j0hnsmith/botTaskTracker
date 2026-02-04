@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"fmt"
 	"html/template"
@@ -18,7 +19,8 @@ import (
 	"github.com/j0hnsmith/botTaskTracker/ent/taskhistory"
 	"github.com/j0hnsmith/botTaskTracker/ent/tasktag"
 
-	_ "modernc.org/sqlite"
+	entsql "entgo.io/ent/dialect/sql"
+	sqlite "modernc.org/sqlite"
 )
 
 //go:embed templates/*.html
@@ -55,13 +57,25 @@ func main() {
 		log.Fatalf("create data dir: %v", err)
 	}
 
-	client, err := ent.Open("sqlite", "file:data/bot_task_tracker.db?_fk=1")
+	sql.Register("sqlite3", &sqlite.Driver{})
+	drv, err := entsql.Open("sqlite3", "file:data/bot_task_tracker.db")
 	if err != nil {
 		log.Fatalf("open db: %v", err)
 	}
 	defer func() {
-		if cerr := client.Close(); cerr != nil {
+		if cerr := drv.Close(); cerr != nil {
 			log.Printf("close db: %v", cerr)
+		}
+	}()
+
+	if _, err := drv.DB().ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
+		log.Fatalf("enable foreign keys: %v", err)
+	}
+
+	client := ent.NewClient(ent.Driver(drv))
+	defer func() {
+		if cerr := client.Close(); cerr != nil {
+			log.Printf("close client: %v", cerr)
 		}
 	}()
 
