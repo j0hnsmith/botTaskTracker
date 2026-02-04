@@ -47,7 +47,7 @@
       </form>
     </div>
 
-    <div class="task-lanes grid gap-6">
+    <div class="task-lanes flex gap-6 overflow-x-auto pb-2">
       {{ range .Columns }}
       <section class="task-lane rounded-2xl border border-slate-200 bg-white/80 shadow-lg p-4">
         <div class="flex items-center justify-between">
@@ -92,6 +92,23 @@
                       <button class="btn btn-sm btn-outline">Tag</button>
                     </form>
                   </li>
+                  {{ if .Edges.History }}
+                  <li class="mt-2">
+                    <details class="task-history">
+                      <summary class="task-history__summary">History</summary>
+                      <div class="task-details__section task-history__body">
+                        <p class="task-details__label">Recent History</p>
+                        <ul class="space-y-1 text-xs text-slate-500">
+                          {{ range $index, $item := .Edges.History }}
+                            {{ if lt $index 3 }}
+                              <li>{{ $item.Action }} {{ if $item.Details }}· {{ $item.Details }}{{ end }} · {{ formatTime $item.CreatedAt }}</li>
+                            {{ end }}
+                          {{ end }}
+                        </ul>
+                      </div>
+                    </details>
+                  </li>
+                  {{ end }}
                   <li class="mt-2">
                     <form method="post" action="/tasks/{{ .ID }}/delete">
                       <button class="btn btn-sm btn-ghost text-error">Delete task</button>
@@ -135,21 +152,6 @@
                   </div>
                   {{ end }}
 
-                  {{ if .Edges.History }}
-                  <details class="task-history">
-                    <summary class="task-history__summary">History</summary>
-                    <div class="task-details__section task-history__body">
-                      <p class="task-details__label">Recent History</p>
-                      <ul class="space-y-1 text-xs text-slate-500">
-                        {{ range $index, $item := .Edges.History }}
-                          {{ if lt $index 3 }}
-                            <li>{{ $item.Action }} {{ if $item.Details }}· {{ $item.Details }}{{ end }} · {{ formatTime $item.CreatedAt }}</li>
-                          {{ end }}
-                        {{ end }}
-                      </ul>
-                    </div>
-                  </details>
-                  {{ end }}
                 </div>
               </details>
             </div>

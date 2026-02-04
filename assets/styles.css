@@ -18,11 +18,14 @@
 }
 
 .task-lanes {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
 }
 
 .task-lane {
-  min-width: 280px;
+  min-width: 320px;
+  flex: 0 0 320px;
 }
 
 .task-lane__title {

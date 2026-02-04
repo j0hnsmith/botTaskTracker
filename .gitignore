@@ -3,4 +3,5 @@
 *_templ.go
 node_modules/
 tmp/
+.parcel-cache/
 .DS_Store
