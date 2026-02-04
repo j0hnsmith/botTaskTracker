@@ -91,6 +91,23 @@ func main() {
 		"formatTime": func(t time.Time) string {
 			return t.Format("Jan 2, 15:04")
 		},
+		"sub": func(a, b int) int {
+			return a - b
+		},
+		"columnLabel": func(column string) string {
+			switch column {
+			case "backlog":
+				return "Backlog"
+			case "in_progress":
+				return "In Progress"
+			case "review":
+				return "Review"
+			case "done":
+				return "Done"
+			default:
+				return "Unknown"
+			}
+		},
 		"badgeStyle": func(key string) string {
 			switch strings.ToLower(key) {
 			case "priority":

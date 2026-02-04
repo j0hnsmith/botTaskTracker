@@ -16,3 +16,152 @@
   backdrop-filter: blur(16px);
   background: rgba(255, 255, 255, 0.7);
 }
+
+.task-card {
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.task-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.task-card__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.task-card__summary {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #475569;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.task-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.task-pill--assignee {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.task-pill--status {
+  border: 1px solid transparent;
+}
+
+.status-backlog {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #e2e8f0;
+}
+
+.status-in_progress {
+  background: #e0f2fe;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.status-review {
+  background: #fef9c3;
+  color: #854d0e;
+  border-color: #fde68a;
+}
+
+.status-done {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.task-details {
+  font-size: 0.75rem;
+}
+
+.task-details summary {
+  list-style: none;
+  cursor: pointer;
+  color: #475569;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+
+.task-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.task-details[open] summary {
+  background: #f8fafc;
+}
+
+.task-details__body {
+  margin-top: 0.6rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.6rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.task-details__label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+
+.task-details__text {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.task-menu__trigger {
+  height: 1.75rem;
+  min-height: 1.75rem;
+  width: 1.75rem;
+  padding: 0;
+  font-size: 1.1rem;
+}
+
+.task-menu__row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
