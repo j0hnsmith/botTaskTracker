@@ -110,6 +110,7 @@ func main() {
 	srv := &server{client: client, tmpl: tmpl}
 
 	mux := http.NewServeMux()
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	mux.HandleFunc("/", srv.handleBoard)
 	mux.HandleFunc("/tasks", srv.handleCreateTask)
 	mux.HandleFunc("/tasks/", srv.handleTaskAction)

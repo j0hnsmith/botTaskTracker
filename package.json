@@ -1,0 +1,30 @@
+{
+  "name": "bottasktracker",
+  "version": "0.0.1",
+  "description": "",
+  "license": "MIT",
+  "browserslist": "> 0.5%, last 2 versions, not dead",
+  "scripts": {
+    "fmt": "prettier --write .",
+    "build": "parcel build ./assets/scripts.js ./assets/styles.css --dist-dir ./static",
+    "dev": "parcel build ./assets/scripts.js ./assets/styles.css --dist-dir ./static --no-optimize",
+    "watch": "parcel watch ./assets/scripts.js ./assets/styles.css --dist-dir ./static --no-optimize",
+    "build:linux": "node build.js",
+    "dev:linux": "node build.js --dev",
+    "watch:linux": "node build.js --watch"
+  },
+  "dependencies": {
+    "tailwindcss": "latest",
+    "daisyui": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "latest",
+    "@tailwindcss/typography": "latest",
+    "@tailwindcss/postcss": "latest",
+    "@parcel/transformer-css": "latest",
+    "esbuild": "latest",
+    "parcel": "^2.16.3",
+    "postcss": "latest",
+    "prettier": "latest"
+  }
+}
