@@ -19,6 +19,7 @@
 
 .task-lanes {
   display: flex;
+  flex-direction: row;
   flex-wrap: nowrap;
   align-items: flex-start;
 }
@@ -198,6 +199,16 @@
   width: 1.75rem;
   padding: 0;
   font-size: 1.1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.task-card:hover .task-menu__trigger,
+.task-card:focus-within .task-menu__trigger,
+.task-menu[open] .task-menu__trigger {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .task-menu__row {
