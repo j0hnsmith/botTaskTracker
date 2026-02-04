@@ -1,0 +1,121 @@
+package fragments
+
+import "github.com/j0hnsmith/botTaskTracker/ent"
+import "strconv"
+import "time"
+
+templ TaskCard(task *ent.Task) {
+	<div id={ "task-card-" + strconv.Itoa(task.ID) } class="card bg-white border shadow-sm p-3">
+		<h4 class="font-semibold text-sm">{ task.Title }</h4>
+		if task.Description != "" {
+			<p class="text-xs text-gray-600 mt-1">{ task.Description }</p>
+		}
+		if len(task.Edges.Tags) > 0 {
+			<div class="flex flex-wrap gap-1 mt-2">
+				for _, tag := range task.Edges.Tags {
+					<span class="badge badge-sm badge-primary">{ tag.Key }:{ tag.Value }</span>
+				}
+			</div>
+		}
+		<div class="flex justify-between items-center mt-2">
+			<span class="text-xs">{ task.Assignee }</span>
+			<div class="flex gap-1">
+				<button
+					class="btn btn-xs btn-ghost"
+					data-task-id={ strconv.Itoa(task.ID) }
+					data-on:click="@get('/datastar/tasks/edit/'+el.dataset.taskId)"
+				>
+					Edit
+				</button>
+				<button
+					class="btn btn-xs btn-ghost text-error"
+					data-task-id={ strconv.Itoa(task.ID) }
+					data-on:click="if(confirm('Delete?')){@delete('/datastar/tasks/'+el.dataset.taskId)}"
+				>
+					×
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+templ TaskAddModalWithForm() {
+	<dialog id="add-task-modal" class="modal">
+		<div class="modal-box">
+			<form method="dialog">
+				<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+			</form>
+			<h3 class="font-bold text-lg">Add Task</h3>
+			<form class="space-y-4 mt-4" data-on:submit="@post('/datastar/tasks')">
+				<div id="add-error" class="text-error text-sm hidden"></div>
+				<input type="text" name="title" data-bind:title placeholder="Title" class="input input-bordered w-full" required/>
+				<textarea name="description" data-bind:description placeholder="Description" class="textarea textarea-bordered w-full"></textarea>
+				<select name="column" data-bind:column class="select select-bordered w-full">
+					<option value="backlog">Backlog</option>
+					<option value="in_progress">In Progress</option>
+					<option value="review">Review</option>
+					<option value="done">Done</option>
+				</select>
+				<select name="assignee" data-bind:assignee class="select select-bordered w-full">
+					<option value="">Unassigned</option>
+					<option value="peter">peter</option>
+					<option value="john">john</option>
+				</select>
+				<input type="text" name="tags" data-bind:tags placeholder="Tags: key:value, key:value" class="input input-bordered w-full"/>
+				<div class="modal-action">
+					<button type="button" class="btn" data-on:click="document.getElementById('add-task-modal').close()">Cancel</button>
+					<button type="submit" class="btn btn-primary">Add</button>
+				</div>
+			</form>
+		</div>
+	</dialog>
+}
+
+templ TaskEditModalWithForm(task *ent.Task) {
+	<dialog id="edit-task-modal" class="modal">
+		<div class="modal-box">
+			<form method="dialog">
+				<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+			</form>
+			<h3 class="font-bold text-lg">Edit Task</h3>
+			<form class="space-y-4 mt-4" data-on:submit={ "@put('/datastar/tasks/"+strconv.Itoa(task.ID)+"')" }>
+				<div id="edit-error" class="text-error text-sm hidden"></div>
+				<input type="text" name="title" data-bind:title value={ task.Title } class="input input-bordered w-full" required/>
+				<textarea name="description" data-bind:description class="textarea textarea-bordered w-full">{ task.Description }</textarea>
+				<select name="column" data-bind:column class="select select-bordered w-full">
+					<option value="backlog" selected?={ task.Column=="backlog" }>Backlog</option>
+					<option value="in_progress" selected?={ task.Column=="in_progress" }>In Progress</option>
+					<option value="review" selected?={ task.Column=="review" }>Review</option>
+					<option value="done" selected?={ task.Column=="done" }>Done</option>
+				</select>
+				<select name="assignee" data-bind:assignee class="select select-bordered w-full">
+					<option value="" selected?={ task.Assignee=="" }>Unassigned</option>
+					<option value="peter" selected?={ task.Assignee=="peter" }>peter</option>
+					<option value="john" selected?={ task.Assignee=="john" }>john</option>
+				</select>
+				<input type="text" name="tags" data-bind:tags placeholder="Tags" class="input input-bordered w-full"/>
+				if len(task.Edges.History) > 0 {
+					<div class="collapse collapse-arrow border">
+						<input type="checkbox"/>
+						<div class="collapse-title text-sm">History</div>
+						<div class="collapse-content">
+							<div class="text-xs space-y-1">
+								for _, h := range task.Edges.History {
+									<div>{ h.Action }: { h.Details } ({ formatTime(h.CreatedAt) })</div>
+								}
+							</div>
+						</div>
+					</div>
+				}
+				<div class="modal-action">
+					<button type="button" class="btn" data-on:click="document.getElementById('edit-task-modal').close()">Cancel</button>
+					<button type="submit" class="btn btn-primary">Save</button>
+				</div>
+			</form>
+		</div>
+	</dialog>
+}
+
+func formatTime(t time.Time) string {
+	return t.Format("Jan 2, 15:04")
+}

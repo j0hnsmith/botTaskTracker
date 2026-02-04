@@ -1,0 +1,66 @@
+package pages
+
+import "github.com/j0hnsmith/botTaskTracker/ent"
+import "github.com/j0hnsmith/botTaskTracker/templates/fragments"
+
+templ BoardMetaTags() {
+	<meta name="keywords" content="bot task tracker, kanban board"/>
+	<meta name="description" content="Bot Task Tracker Kanban Board"/>
+}
+
+templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []string, selectedAssignee string) {
+	<div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+		<div class="lg:col-span-3">
+			@BoardHeader(assignees, selectedAssignee)
+			@BoardColumns(tasks)
+		</div>
+		<div class="lg:col-span-1">
+			@fragments.ActivityFeed(activity)
+		</div>
+	</div>
+}
+
+templ BoardHeader(assignees []string, selectedAssignee string) {
+	<div class="card bg-base-100 shadow-xl mb-4">
+		<div class="card-body">
+			<div class="flex justify-between items-center">
+				<h2 class="card-title">Task Board</h2>
+				<div class="flex gap-2">
+					<select class="select select-bordered select-sm" onchange="window.location.href='/?assignee='+this.value">
+						<option value="all" selected?={ selectedAssignee=="" || selectedAssignee=="all" }>All</option>
+						for _, assignee := range assignees {
+							<option value={ assignee } selected?={ selectedAssignee==assignee }>{ assignee }</option>
+						}
+					</select>
+					<button class="btn btn-primary btn-sm" data-on:click="@get('/datastar/tasks/add-form')">
+						Add Task
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ BoardColumns(tasks []*ent.Task) {
+	<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+		@BoardColumn("backlog", "Backlog", tasks)
+		@BoardColumn("in_progress", "In Progress", tasks)
+		@BoardColumn("review", "Review", tasks)
+		@BoardColumn("done", "Done", tasks)
+	</div>
+}
+
+templ BoardColumn(columnKey string, columnTitle string, allTasks []*ent.Task) {
+	<div class="card bg-base-100 shadow-xl">
+		<div class="card-body">
+			<h3 class="card-title text-sm">{ columnTitle }</h3>
+			<div id={ "column-" + columnKey } class="space-y-2 min-h-[200px]">
+				for _, task := range allTasks {
+					if task.Column == columnKey {
+						@fragments.TaskCard(task)
+					}
+				}
+			</div>
+		</div>
+	</div>
+}

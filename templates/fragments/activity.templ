@@ -1,0 +1,48 @@
+package fragments
+
+import "github.com/j0hnsmith/botTaskTracker/ent"
+import "time"
+
+templ ActivityFeed(activity []*ent.TaskHistory) {
+	<div class="card bg-base-100 shadow-xl">
+		<div class="card-body">
+			<h3 class="card-title text-sm">Activity</h3>
+			<div class="space-y-2 max-h-[600px] overflow-y-auto">
+				if len(activity) == 0 {
+					<div class="text-center text-gray-500 text-sm">No activity</div>
+				} else {
+					for _, entry := range activity {
+						@ActivityEntry(entry)
+					}
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ ActivityEntry(entry *ent.TaskHistory) {
+	<div class="p-2 bg-base-200 rounded text-xs">
+		<div class="font-semibold">{ entry.Action }</div>
+		if entry.Details != "" {
+			<div class="text-gray-600">{ entry.Details }</div>
+		}
+		if entry.Edges.Task != nil {
+			<div class="text-gray-500">{ entry.Edges.Task.Title }</div>
+		}
+		<div class="text-gray-400">{ formatTimeAgo(entry.CreatedAt) }</div>
+	</div>
+}
+
+func formatTimeAgo(t time.Time) string {
+	duration := time.Since(t)
+	if duration < time.Minute {
+		return "just now"
+	}
+	if duration < time.Hour {
+		return "few mins ago"
+	}
+	if duration < 24*time.Hour {
+		return "today"
+	}
+	return t.Format("Jan 2")
+}

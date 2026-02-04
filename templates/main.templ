@@ -1,0 +1,26 @@
+package templates
+
+templ Layout(title string, metaTags templ.Component, bodyContent templ.Component) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="light">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title }</title>
+			@metaTags
+			<link rel="stylesheet" href="/static/styles.css"/>
+			<script type="module" defer src="https://cdn.jsdelivr.net/npm/@starfederation/datastar"></script>
+		</head>
+		<body class="min-h-screen bg-base-200">
+			<div class="navbar bg-base-100 shadow-lg">
+				<div class="flex-1">
+					<a href="/" class="btn btn-ghost normal-case text-xl">🤖 Bot Task Tracker</a>
+				</div>
+			</div>
+			<main class="container mx-auto p-4">
+				@bodyContent
+			</main>
+			<div id="modal-container"></div>
+		</body>
+	</html>
+}
