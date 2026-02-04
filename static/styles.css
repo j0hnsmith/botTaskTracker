@@ -1695,19 +1695,9 @@
       line-height: var(--tw-leading, var(--text-4xl--line-height));
     }
   }
-  .lg\:grid-cols-2 {
-    @media (width >= 64rem) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
   .lg\:grid-cols-\[2\.3fr_1fr\] {
     @media (width >= 64rem) {
       grid-template-columns: 2.3fr 1fr;
-    }
-  }
-  .xl\:grid-cols-4 {
-    @media (width >= 80rem) {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 }
@@ -1723,6 +1713,15 @@
 .glass-panel {
   backdrop-filter: blur(16px);
   background: rgba(255, 255, 255, 0.7);
+}
+.task-lanes {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.task-lane {
+  min-width: 280px;
+}
+.task-lane__title {
+  white-space: nowrap;
 }
 .task-card {
   padding: 0.9rem;
@@ -1837,6 +1836,28 @@
   font-size: 0.78rem;
   color: #475569;
   line-height: 1.5;
+}
+.task-history summary {
+  list-style: none;
+  cursor: pointer;
+  color: #475569;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+}
+.task-history summary::-webkit-details-marker {
+  display: none;
+}
+.task-history[open] summary {
+  background: #f8fafc;
+}
+.task-history__body {
+  margin-top: 0.6rem;
 }
 .task-menu__trigger {
   height: 1.75rem;
