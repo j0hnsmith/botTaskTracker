@@ -254,7 +254,7 @@ func (s *server) handleTaskAction(w http.ResponseWriter, r *http.Request) {
 	switch action {
 	case "move":
 		column := sanitizeColumn(r.FormValue("column"))
-		if err := s.client.Task.UpdateOneID(id).SetColumn(column).Save(ctx); err != nil {
+		if _, err := s.client.Task.UpdateOneID(id).SetColumn(column).Save(ctx); err != nil {
 			http.Error(w, "unable to move", http.StatusInternalServerError)
 			return
 		}
@@ -265,7 +265,7 @@ func (s *server) handleTaskAction(w http.ResponseWriter, r *http.Request) {
 			Save(ctx)
 	case "assign":
 		assignee := strings.TrimSpace(r.FormValue("assignee"))
-		if err := s.client.Task.UpdateOneID(id).SetAssignee(assignee).Save(ctx); err != nil {
+		if _, err := s.client.Task.UpdateOneID(id).SetAssignee(assignee).Save(ctx); err != nil {
 			http.Error(w, "unable to assign", http.StatusInternalServerError)
 			return
 		}
@@ -368,7 +368,10 @@ func sanitizeColumn(value string) string {
 }
 
 func nextPosition(ctx context.Context, client *ent.Client, column string) int {
-	max, err := client.Task.Query().Where(task.ColumnEQ(column)).Max(ctx, task.FieldPosition)
+	max, err := client.Task.Query().
+		Where(task.ColumnEQ(column)).
+		Aggregate(ent.Max(task.FieldPosition)).
+		Int(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return 0
