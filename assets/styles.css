@@ -1,4 +1,4 @@
-@import 'tailwindcss' source('../cmd/server/templates');
+@import 'tailwindcss' source('../templates');
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 

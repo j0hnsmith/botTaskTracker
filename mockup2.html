@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="corporate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>botTaskTracker - Mockup v2</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-200 min-h-screen">
+  
+  <!-- Header -->
+  <div class="navbar bg-base-100 shadow-sm px-6">
+    <div class="flex-1">
+      <span class="text-xl font-bold">🤖 botTaskTracker</span>
+    </div>
+    <div class="flex-none gap-2">
+      <button class="btn btn-ghost btn-sm">
+        <span class="badge badge-primary badge-sm">john</span>
+        Filter ▾
+      </button>
+    </div>
+  </div>
+
+  <div class="p-6">
+    <!-- Board Container -->
+    <div class="flex gap-4">
+      
+      <!-- Backlog Column -->
+      <div class="flex-1 min-w-[280px] max-w-[320px]">
+        <div class="flex items-center gap-2 mb-3 px-1">
+          <h2 class="font-semibold text-base-content">Backlog</h2>
+          <span class="badge badge-ghost badge-sm">5</span>
+        </div>
+        
+        <div class="space-y-3">
+          <!-- Swimlane: Features -->
+          <div class="bg-primary/5 rounded-lg p-2 border-l-4 border-primary">
+            <div class="text-xs font-semibold text-primary uppercase tracking-wide mb-2 px-1">🚀 Features</div>
+            
+            <div class="card bg-base-100 shadow-sm">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm">Add user authentication</h3>
+                <p class="text-xs text-base-content/60">Implement OAuth2 with GitHub</p>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span class="badge badge-xs badge-primary badge-outline">priority:high</span>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-base-content/50">2h ago</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content w-5 rounded-full text-xs">J</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card bg-base-100 shadow-sm mt-2">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm">Task history tracking</h3>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span class="badge badge-xs badge-outline">enhancement</span>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-base-content/50">1d ago</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content w-5 rounded-full text-xs">P</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Swimlane: Bugs -->
+          <div class="bg-error/5 rounded-lg p-2 border-l-4 border-error">
+            <div class="text-xs font-semibold text-error uppercase tracking-wide mb-2 px-1">🐛 Bugs</div>
+            
+            <div class="card bg-base-100 shadow-sm">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm">Fix database migrations</h3>
+                <p class="text-xs text-base-content/60">Migrations fail on fresh install</p>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span class="badge badge-xs badge-error badge-outline">critical</span>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-base-content/50">3h ago</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content w-5 rounded-full text-xs">J</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Swimlane: Docs -->
+          <div class="bg-info/5 rounded-lg p-2 border-l-4 border-info">
+            <div class="text-xs font-semibold text-info uppercase tracking-wide mb-2 px-1">📚 Documentation</div>
+            
+            <div class="card bg-base-100 shadow-sm">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm">Write API docs</h3>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span class="badge badge-xs badge-ghost">low</span>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-base-content/50">2d ago</span>
+                  <div class="w-5"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- In Progress Column -->
+      <div class="flex-1 min-w-[280px] max-w-[320px]">
+        <div class="flex items-center gap-2 mb-3 px-1">
+          <h2 class="font-semibold text-base-content">In Progress</h2>
+          <span class="badge badge-ghost badge-sm">2</span>
+        </div>
+        
+        <div class="space-y-3">
+          <!-- Swimlane: Features -->
+          <div class="bg-primary/5 rounded-lg p-2 border-l-4 border-primary">
+            <div class="text-xs font-semibold text-primary uppercase tracking-wide mb-2 px-1">🚀 Features</div>
+            
+            <div class="card bg-base-100 shadow-sm ring-2 ring-primary/30">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm">Build kanban UI</h3>
+                <p class="text-xs text-base-content/60">Create swimlane layout with daisyUI</p>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span class="badge badge-xs badge-secondary badge-outline">ui</span>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-base-content/50">Started 30m ago</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content w-5 rounded-full text-xs">J</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Swimlane: Bugs -->
+          <div class="bg-error/5 rounded-lg p-2 border-l-4 border-error min-h-[60px] flex items-center justify-center">
+            <span class="text-xs text-base-content/30">No bugs in progress</span>
+          </div>
+          
+          <!-- Swimlane: Ops -->
+          <div class="bg-warning/5 rounded-lg p-2 border-l-4 border-warning">
+            <div class="text-xs font-semibold text-warning uppercase tracking-wide mb-2 px-1">⚙️ Operations</div>
+            
+            <div class="card bg-base-100 shadow-sm">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm">Deploy to staging</h3>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span class="badge badge-xs badge-outline">infra</span>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-base-content/50">Started 1h ago</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content w-5 rounded-full text-xs">P</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Review Column -->
+      <div class="flex-1 min-w-[280px] max-w-[320px]">
+        <div class="flex items-center gap-2 mb-3 px-1">
+          <h2 class="font-semibold text-base-content">Review</h2>
+          <span class="badge badge-ghost badge-sm">1</span>
+        </div>
+        
+        <div class="space-y-3">
+          <!-- Swimlane: Features -->
+          <div class="bg-primary/5 rounded-lg p-2 border-l-4 border-primary">
+            <div class="text-xs font-semibold text-primary uppercase tracking-wide mb-2 px-1">🚀 Features</div>
+            
+            <div class="card bg-base-100 shadow-sm">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm">Test payment flow</h3>
+                <p class="text-xs text-base-content/60">Verify Stripe integration</p>
+                <div class="flex flex-wrap gap-1 mt-2">
+                  <span class="badge badge-xs badge-outline">testing</span>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-xs text-base-content/50">In review 2h</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content w-5 rounded-full text-xs">P</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Swimlane: Bugs -->
+          <div class="bg-error/5 rounded-lg p-2 border-l-4 border-error min-h-[60px] flex items-center justify-center">
+            <span class="text-xs text-base-content/30">No bugs in review</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Done Column -->
+      <div class="flex-1 min-w-[280px] max-w-[320px]">
+        <div class="flex items-center gap-2 mb-3 px-1">
+          <h2 class="font-semibold text-base-content">Done</h2>
+          <span class="badge badge-ghost badge-sm">3</span>
+        </div>
+        
+        <div class="space-y-3">
+          <!-- Swimlane: Features -->
+          <div class="bg-primary/5 rounded-lg p-2 border-l-4 border-primary">
+            <div class="text-xs font-semibold text-primary uppercase tracking-wide mb-2 px-1">🚀 Features</div>
+            
+            <div class="card bg-base-100 shadow-sm opacity-70">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm line-through text-base-content/60">Setup project structure</h3>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="badge badge-xs badge-success">✓ done</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content w-5 rounded-full text-xs">J</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Swimlane: Ops -->
+          <div class="bg-warning/5 rounded-lg p-2 border-l-4 border-warning">
+            <div class="text-xs font-semibold text-warning uppercase tracking-wide mb-2 px-1">⚙️ Operations</div>
+            
+            <div class="card bg-base-100 shadow-sm opacity-70">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm line-through text-base-content/60">Configure CI/CD</h3>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="badge badge-xs badge-success">✓ done</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content w-5 rounded-full text-xs">P</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card bg-base-100 shadow-sm opacity-70 mt-2">
+              <div class="card-body p-3">
+                <h3 class="font-medium text-sm line-through text-base-content/60">Setup monitoring</h3>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="badge badge-xs badge-success">✓ done</span>
+                  <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content w-5 rounded-full text-xs">P</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- Legend -->
+    <div class="mt-6 flex gap-4 text-xs text-base-content/60">
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-primary/20 border-l-2 border-primary"></span> Features</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-error/20 border-l-2 border-error"></span> Bugs</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-warning/20 border-l-2 border-warning"></span> Operations</span>
+      <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-info/20 border-l-2 border-info"></span> Documentation</span>
+    </div>
+  </div>
+
+</body>
+</html>

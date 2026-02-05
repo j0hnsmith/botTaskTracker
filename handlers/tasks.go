@@ -202,7 +202,7 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Render task card
 	var htmlBuilder strings.Builder
-	err = fragments.TaskCard(newTask).Render(ctx, &htmlBuilder)
+	err = fragments.TaskCard(newTask, column).Render(ctx, &htmlBuilder)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to render task card", "error", err)
 		_ = sse.ConsoleError(err)
@@ -364,7 +364,7 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Render updated card
 	var htmlBuilder strings.Builder
-	err = fragments.TaskCard(updatedTask).Render(ctx, &htmlBuilder)
+	err = fragments.TaskCard(updatedTask, updatedTask.Column).Render(ctx, &htmlBuilder)
 	if err != nil {
 		_ = sse.ConsoleError(err)
 		return
@@ -400,9 +400,9 @@ func (s *Server) TaskDeleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Stub handlers for move, assign, tag operations
-func (s *Server) TaskMoveHandler(w http.ResponseWriter, r *http.Request) {}
-func (s *Server) TaskAssignHandler(w http.ResponseWriter, r *http.Request) {}
-func (s *Server) TaskAddTagHandler(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) TaskMoveHandler(w http.ResponseWriter, r *http.Request)      {}
+func (s *Server) TaskAssignHandler(w http.ResponseWriter, r *http.Request)    {}
+func (s *Server) TaskAddTagHandler(w http.ResponseWriter, r *http.Request)    {}
 func (s *Server) TaskRemoveTagHandler(w http.ResponseWriter, r *http.Request) {}
 
 // Helper functions

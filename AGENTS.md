@@ -20,7 +20,7 @@ Backend-driven UI using SSE. Key concepts:
 - Signals (`$foo`) for frontend state
 - Actions (`@get()`, `@post()`) for backend communication
 
-See `docs/DATASTAR.md` for full reference.
+See workspace `docs/DATASTAR.md` for full reference.
 
 ### daisyUI
 CSS component library for Tailwind CSS. Provides semantic class names like:
@@ -28,7 +28,7 @@ CSS component library for Tailwind CSS. Provides semantic class names like:
 - Colors: `primary`, `secondary`, `accent`, `neutral`, `base-*`
 - Sizes: `btn-sm`, `btn-lg`, etc.
 
-See `docs/DAISYUI.md` for full reference.
+See workspace `docs/DAISYUI.md` for full reference.
 
 ## Project Structure
 ```

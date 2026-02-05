@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>botTaskTracker - Mockup v3</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    .swimlane {
+      background: #f6f8fa;
+      border: 1px solid #d1d9e0;
+      border-radius: 8px;
+    }
+    .swimlane-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #d1d9e0;
+      background: white;
+      border-radius: 8px 8px 0 0;
+    }
+    .swimlane-content {
+      padding: 8px;
+      min-height: 400px;
+    }
+    .task-card {
+      background: white;
+      border: 1px solid #d1d9e0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .task-card:hover {
+      border-color: #0969da;
+    }
+    .task-id {
+      color: #656d76;
+      font-size: 12px;
+    }
+    .task-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2328;
+      margin: 4px 0 8px 0;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      margin: 2px;
+    }
+    .tag-blue { background: #ddf4ff; color: #0969da; }
+    .tag-green { background: #dafbe1; color: #1a7f37; }
+    .tag-purple { background: #fbefff; color: #8250df; }
+    .tag-orange { background: #fff1e5; color: #bc4c00; }
+    .tag-red { background: #ffebe9; color: #cf222e; }
+    .tag-yellow { background: #fff8c5; color: #9a6700; }
+    .tag-gray { background: #eaeef2; color: #656d76; }
+    .tag-teal { background: #ddf4ff; color: #0550ae; }
+    .category-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      background: #dafbe1;
+      color: #1a7f37;
+      margin: 2px;
+    }
+  </style>
+</head>
+<body class="bg-white min-h-screen">
+  
+  <!-- Header -->
+  <div class="border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-xl font-semibold">🤖 botTaskTracker</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="btn btn-sm btn-ghost">Filter ▾</button>
+      <button class="btn btn-sm btn-ghost">Group by ▾</button>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div class="p-6 flex gap-4 overflow-x-auto">
+    
+    <!-- Backlog Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <span class="w-4 h-4 rounded-full border-2 border-gray-400"></span>
+        <span class="font-semibold text-gray-900">Backlog</span>
+        <span class="text-gray-500 text-sm">5</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 -->
+        <div class="task-card">
+          <div class="task-id">⊙ task #101</div>
+          <div class="task-title">Add user authentication</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-blue">feature</span>
+            <span class="tag tag-purple">auth</span>
+            <span class="tag tag-red">priority:high</span>
+          </div>
+          <div class="category-tag mt-2">
+            <span>🔐</span> Security
+          </div>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="task-card">
+          <div class="task-id">⊙ task #102</div>
+          <div class="task-title">Task history tracking with full audit log</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-blue">feature</span>
+            <span class="tag tag-green">enhancement</span>
+          </div>
+          <div class="category-tag mt-2">
+            <span>📊</span> Core Features
+          </div>
+        </div>
+        
+        <!-- Card 3 -->
+        <div class="task-card">
+          <div class="task-id">⊙ task #103</div>
+          <div class="task-title">Fix database migrations on fresh install</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-red">bug</span>
+            <span class="tag tag-orange">critical</span>
+            <span class="tag tag-gray">database</span>
+          </div>
+          <div class="category-tag mt-2" style="background: #ffebe9; color: #cf222e;">
+            <span>🐛</span> Bugs
+          </div>
+        </div>
+        
+        <!-- Card 4 -->
+        <div class="task-card">
+          <div class="task-id">⊙ task #104</div>
+          <div class="task-title">Write API documentation</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-teal">docs</span>
+            <span class="tag tag-gray">low priority</span>
+          </div>
+          <div class="category-tag mt-2" style="background: #ddf4ff; color: #0550ae;">
+            <span>📚</span> Documentation
+          </div>
+        </div>
+        
+        <!-- Card 5 -->
+        <div class="task-card">
+          <div class="task-id">⊙ task #105</div>
+          <div class="task-title">Add dark mode support</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-blue">feature</span>
+            <span class="tag tag-purple">ui</span>
+          </div>
+          <div class="category-tag mt-2">
+            <span>🎨</span> UI/UX
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <!-- In Progress Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <span class="w-4 h-4 rounded-full border-2 border-yellow-500 bg-yellow-100"></span>
+        <span class="font-semibold text-gray-900">In Progress</span>
+        <span class="text-gray-500 text-sm">2</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 -->
+        <div class="task-card" style="border-left: 3px solid #0969da;">
+          <div class="task-id">⊙ task #106</div>
+          <div class="task-title">Build kanban UI with swimlanes</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-blue">feature</span>
+            <span class="tag tag-purple">ui</span>
+            <span class="tag tag-green">daisyui</span>
+          </div>
+          <div class="category-tag mt-2">
+            <span>🎨</span> UI/UX
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+            <div class="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-medium">J</div>
+            <span class="text-xs text-gray-500">john • Started 30m ago</span>
+          </div>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="task-card" style="border-left: 3px solid #0969da;">
+          <div class="task-id">⊙ task #107</div>
+          <div class="task-title">Deploy staging environment</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-orange">ops</span>
+            <span class="tag tag-teal">infra</span>
+            <span class="tag tag-gray">terraform</span>
+          </div>
+          <div class="category-tag mt-2" style="background: #fff1e5; color: #bc4c00;">
+            <span>⚙️</span> Operations
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+            <div class="w-6 h-6 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center font-medium">P</div>
+            <span class="text-xs text-gray-500">peter • Started 1h ago</span>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <!-- Review Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <span class="w-4 h-4 rounded-full border-2 border-purple-500 bg-purple-100"></span>
+        <span class="font-semibold text-gray-900">Review</span>
+        <span class="text-gray-500 text-sm">2</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 -->
+        <div class="task-card">
+          <div class="task-id">⊙ task #108</div>
+          <div class="task-title">Test payment flow with Stripe</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-blue">feature</span>
+            <span class="tag tag-yellow">testing</span>
+            <span class="tag tag-green">stripe</span>
+          </div>
+          <div class="category-tag mt-2">
+            <span>💳</span> Payments
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+            <div class="w-6 h-6 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center font-medium">P</div>
+            <span class="text-xs text-gray-500">peter • In review 2h</span>
+          </div>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="task-card">
+          <div class="task-id">⊙ task #109</div>
+          <div class="task-title">Review PR #42 - OAuth implementation</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-purple">review</span>
+            <span class="tag tag-blue">auth</span>
+          </div>
+          <div class="category-tag mt-2">
+            <span>🔐</span> Security
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+            <div class="w-6 h-6 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center font-medium">P</div>
+            <span class="text-xs text-gray-500">peter • In review 4h</span>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <!-- Done Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <span class="w-4 h-4 rounded-full bg-green-500"></span>
+        <span class="font-semibold text-gray-900">Done</span>
+        <span class="text-gray-500 text-sm">3</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 -->
+        <div class="task-card" style="opacity: 0.7;">
+          <div class="task-id">✓ task #110</div>
+          <div class="task-title" style="text-decoration: line-through; color: #656d76;">Setup project structure</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-green">complete</span>
+            <span class="tag tag-blue">setup</span>
+          </div>
+          <div class="category-tag mt-2">
+            <span>📦</span> Setup
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+            <div class="w-6 h-6 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-medium">J</div>
+            <span class="text-xs text-gray-500">john • Completed 3h ago</span>
+          </div>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="task-card" style="opacity: 0.7;">
+          <div class="task-id">✓ task #111</div>
+          <div class="task-title" style="text-decoration: line-through; color: #656d76;">Configure CI/CD pipeline</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-green">complete</span>
+            <span class="tag tag-orange">ops</span>
+            <span class="tag tag-gray">github-actions</span>
+          </div>
+          <div class="category-tag mt-2" style="background: #fff1e5; color: #bc4c00;">
+            <span>⚙️</span> Operations
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+            <div class="w-6 h-6 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center font-medium">P</div>
+            <span class="text-xs text-gray-500">peter • Completed 1d ago</span>
+          </div>
+        </div>
+        
+        <!-- Card 3 -->
+        <div class="task-card" style="opacity: 0.7;">
+          <div class="task-id">✓ task #112</div>
+          <div class="task-title" style="text-decoration: line-through; color: #656d76;">Setup monitoring with Grafana</div>
+          <div class="flex flex-wrap">
+            <span class="tag tag-green">complete</span>
+            <span class="tag tag-orange">ops</span>
+            <span class="tag tag-teal">monitoring</span>
+          </div>
+          <div class="category-tag mt-2" style="background: #fff1e5; color: #bc4c00;">
+            <span>⚙️</span> Operations
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+            <div class="w-6 h-6 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center font-medium">P</div>
+            <span class="text-xs text-gray-500">peter • Completed 2d ago</span>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+  </div>
+
+</body>
+</html>

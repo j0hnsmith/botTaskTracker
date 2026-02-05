@@ -3,12 +3,13 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/j0hnsmith/botTaskTracker/ent"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/j0hnsmith/botTaskTracker/ent"
 	sqlite "modernc.org/sqlite"
 )
 
@@ -44,11 +45,12 @@ func (s *Server) Close() error {
 	return s.Client.Close()
 }
 
-func (s *Server) Routes() *http.ServeMux {
+func (s *Server) Routes(staticFS fs.FS) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// Static assets
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	// Static assets from embedded FS
+	staticSub, _ := fs.Sub(staticFS, "static")
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 
 	// Page routes
 	mux.HandleFunc("GET /{$}", s.BoardViewHandler)
