@@ -22,10 +22,16 @@ Mission Control-style kanban board for tracking bot tasks and work in progress.
 
 **Quick start:**
 ```bash
-./run.sh
+make run    # Build and run
 ```
 
-The `run.sh` script automatically:
+**Other targets:**
+```bash
+make clean  # Remove old binaries
+make build  # Build assets and generate code only
+```
+
+The `make run` target automatically:
 1. Builds CSS assets with `npm run build:linux`
 2. Generates templ templates with `go generate ./...`
 3. Runs the server with `go run .` (no binary created)
@@ -40,12 +46,6 @@ go generate ./...
 
 # Run (never use go build - always go run)
 go run .
-```
-
-**With make:**
-```bash
-make run    # Build and run
-make clean  # Remove old binaries
 ```
 
 Server runs on port 7002.

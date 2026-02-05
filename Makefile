@@ -1,4 +1,3 @@
-# NOTE: If make is not installed, use ./run.sh instead
 .PHONY: run clean build dev
 
 # Default target
