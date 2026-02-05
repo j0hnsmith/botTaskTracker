@@ -20,18 +20,37 @@ Mission Control-style kanban board for tracking bot tasks and work in progress.
 
 ## Development
 
+**Quick start:**
 ```bash
-# Generate ent schemas
-go generate ./ent
+./run.sh
+```
 
-# Generate templ templates
-templ generate
+The `run.sh` script automatically:
+1. Builds CSS assets with `npm run build:linux`
+2. Generates templ templates with `go generate ./...`
+3. Runs the server with `go run .` (no binary created)
 
-# Run server
-go run ./cmd/server
+**Manual steps:**
+```bash
+# Build CSS
+npm run build:linux
+
+# Generate templates
+go generate ./...
+
+# Run (never use go build - always go run)
+go run .
+```
+
+**With make:**
+```bash
+make run    # Build and run
+make clean  # Remove old binaries
 ```
 
 Server runs on port 7002.
+
+**Important:** Always use `go run .` instead of building binaries to avoid stale asset issues.
 
 ## Deployment
 
