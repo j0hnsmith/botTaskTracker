@@ -10,7 +10,8 @@ build:
 	@echo "Building CSS assets..."
 	@npm run build:linux
 	@echo "Generating templ files..."
-	@/usr/local/go/bin/go generate ./...
+	@~/go/bin/templ generate
+	@/usr/local/go/bin/go build -o botTaskTracker .
 
 # Lint code
 lint:
