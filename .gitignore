@@ -6,3 +6,4 @@ tmp/
 .parcel-cache/
 .DS_Store
 botTaskTracker
+bin/
