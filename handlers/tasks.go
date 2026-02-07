@@ -20,6 +20,41 @@ import (
 	"github.com/j0hnsmith/botTaskTracker/templates/pages"
 )
 
+// ColumnContentHandler returns the HTML content for a single column.
+// Used by drag-drop JavaScript to refresh columns after updates.
+func (s *Server) ColumnContentHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	column := r.PathValue("column")
+
+	// Validate column
+	column = sanitizeColumn(column)
+
+	// Get all tasks in the column
+	tasks, err := s.Client.Task.Query().
+		Where(task.ColumnEQ(column)).
+		WithTags().
+		WithHistory(func(q *ent.TaskHistoryQuery) {
+			q.Order(ent.Desc(taskhistory.FieldCreatedAt))
+		}).
+		Order(ent.Asc(task.FieldPosition), ent.Asc(task.FieldCreatedAt)).
+		All(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get tasks for column", "column", column, "error", err)
+		http.Error(w, "Failed to load column", http.StatusInternalServerError)
+		return
+	}
+
+	// Render all task cards
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	for _, t := range tasks {
+		if err := fragments.TaskCard(t, column).Render(ctx, w); err != nil {
+			slog.ErrorContext(ctx, "failed to render task card", "task_id", t.ID, "error", err)
+			http.Error(w, "Failed to render task", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 // BoardViewHandler handles the main kanban board page.
 func (s *Server) BoardViewHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -163,7 +198,7 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create history entry
-	_, err = s.Client.TaskHistory.Create().
+	historyEntry, err := s.Client.TaskHistory.Create().
 		SetTaskID(newTask.ID).
 		SetAction("created").
 		SetDetails(fmt.Sprintf("created in %s", column)).
@@ -171,6 +206,12 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Save(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create history", "error", err)
+	} else {
+		// Broadcast activity update
+		s.Broadcaster.BroadcastActivity(ActivityEvent{
+			Type:      "activity_created",
+			HistoryID: historyEntry.ID,
+		})
 	}
 
 	// Parse and add tags
@@ -378,12 +419,19 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create history entry
-	_, _ = s.Client.TaskHistory.Create().
+	historyEntry, err := s.Client.TaskHistory.Create().
 		SetTaskID(updatedTask.ID).
 		SetAction("updated").
 		SetDetails("updated task").
 		SetActor(signals.Assignee).
 		Save(ctx)
+	if err == nil {
+		// Broadcast activity update
+		s.Broadcaster.BroadcastActivity(ActivityEvent{
+			Type:      "activity_created",
+			HistoryID: historyEntry.ID,
+		})
+	}
 
 	// Update tags
 	_, _ = s.Client.TaskTag.Delete().Where(tasktag.HasTaskWith(task.IDEQ(updatedTask.ID))).Exec(ctx)
@@ -507,7 +555,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 
 	// Create history entry
 	details := fmt.Sprintf("moved from %s to %s", oldColumn, newColumn)
-	_, err = s.Client.TaskHistory.Create().
+	historyEntry, err := s.Client.TaskHistory.Create().
 		SetTaskID(id).
 		SetAction("moved").
 		SetDetails(details).
@@ -515,6 +563,12 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		Save(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create history for column update", "error", err)
+	} else {
+		// Broadcast activity update
+		s.Broadcaster.BroadcastActivity(ActivityEvent{
+			Type:      "activity_created",
+			HistoryID: historyEntry.ID,
+		})
 	}
 
 	// Reload task with edges
@@ -600,7 +654,7 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Create history entry
+	// Create history entry (note: reordering within column doesn't create activity - too noisy)
 	_, err = s.Client.TaskHistory.Create().
 		SetTaskID(id).
 		SetAction("reordered").
@@ -610,6 +664,7 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create history for position update", "error", err)
 	}
+	// Note: We don't broadcast activity for reordering - it's too noisy and less meaningful
 
 	// Render the entire column to reflect reordering
 	if err := renderColumnUpdate(ctx, sse, s.Client, column); err != nil {

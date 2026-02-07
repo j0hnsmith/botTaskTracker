@@ -8,51 +8,174 @@ templ ActivityFeed(activity []*ent.TaskHistory) {
 		<div class="card-body p-4">
 			<div class="flex items-center justify-between mb-3">
 				<h3 class="card-title text-base">📋 Activity Stream</h3>
-				<span class="badge badge-ghost badge-sm">Last 24 hours</span>
+				<div class="flex items-center gap-2">
+					<span id="activity-status" class="badge badge-ghost badge-sm">Live</span>
+					<span class="badge badge-ghost badge-sm">Last 30 events</span>
+				</div>
 			</div>
 			if len(activity) == 0 {
 				<div class="text-center text-gray-500 text-sm py-8">No activity yet</div>
 			} else {
 				<!-- Timeline -->
-				<ul class="timeline timeline-vertical timeline-compact">
+				<ul id="activity-timeline" class="timeline timeline-vertical timeline-compact">
 					for i, entry := range activity {
-						<li>
-							if i > 0 {
-								<hr class={ getTimelineColor(entry) }/>
-							}
-							<div class="timeline-start text-xs text-base-content/60">{ formatTimeAgo(entry.CreatedAt) }</div>
-							<div class="timeline-middle">
-								<div class="avatar placeholder">
-									<div class={
-										"rounded-full w-5 h-5 text-[10px]",
-										templ.KV("bg-info text-info-content", getAssigneeFromDetails(entry.Details) == "john"),
-										templ.KV("bg-primary text-primary-content", getAssigneeFromDetails(entry.Details) == "peter"),
-										templ.KV("bg-accent text-accent-content", getAssigneeFromDetails(entry.Details) != "john" && getAssigneeFromDetails(entry.Details) != "peter"),
-									}>
-										<span>{ getAssigneeInitial(entry.Details) }</span>
-									</div>
-								</div>
-							</div>
-							<div class="timeline-end timeline-box text-sm">
-								<span class="font-medium">{ getAssigneeFromDetails(entry.Details) }</span>
-								{ " " }
-								{ getActionText(entry.Action) }
-								{ " " }
-								if entry.Edges.Task != nil {
-									<span class="font-medium">"{ entry.Edges.Task.Title }"</span>
-								}
-								{ " " }
-								@getStatusBadge(entry.Action, entry.Details)
-							</div>
-							if i < len(activity)-1 {
-								<hr class={ getTimelineColor(activity[i+1]) }/>
-							}
-						</li>
+						@ActivityItem(entry, i)
 					}
 				</ul>
 			}
 		</div>
 	</div>
+	<!-- SSE Connection for Activity Stream -->
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			let activitySource = null;
+			let activityReconnectTimer = null;
+			
+			function connectActivitySSE() {
+				if (activitySource) return;
+				
+				console.log('[Activity SSE] Connecting...');
+				activitySource = new EventSource('/datastar/activity/events');
+				
+				activitySource.addEventListener('datastar-patch-elements', (e) => {
+					console.log('[Activity SSE] Received patch-elements');
+					try {
+						const lines = e.data.split('\n');
+						let selector = '';
+						let mode = 'outer';
+						let html = '';
+						
+						for (const line of lines) {
+							if (line.startsWith('selector ')) {
+								selector = line.substring(9);
+							} else if (line.startsWith('mode ')) {
+								mode = line.substring(5);
+							} else if (line.startsWith('elements ')) {
+								html = line.substring(9);
+							}
+						}
+						
+						if (html && selector) {
+							const target = document.querySelector(selector);
+							if (target && mode === 'prepend') {
+								const tempDiv = document.createElement('div');
+								tempDiv.innerHTML = html;
+								const newElement = tempDiv.firstElementChild;
+								if (newElement) {
+									target.insertBefore(newElement, target.firstChild);
+									console.log('[Activity SSE] Prepended to', selector);
+								}
+							}
+						}
+					} catch (err) {
+						console.error('[Activity SSE] Error processing patch:', err);
+					}
+				});
+				
+				activitySource.addEventListener('datastar-execute-script', (e) => {
+					console.log('[Activity SSE] Received execute-script');
+					try {
+						const lines = e.data.split('\n');
+						for (const line of lines) {
+							if (line.startsWith('script ')) {
+								const script = line.substring(7);
+								eval(script);
+								console.log('[Activity SSE] Executed script');
+							}
+						}
+					} catch (err) {
+						console.error('[Activity SSE] Error executing script:', err);
+					}
+				});
+				
+				activitySource.onopen = () => {
+					console.log('[Activity SSE] Connected');
+					const statusBadge = document.getElementById('activity-status');
+					if (statusBadge) {
+						statusBadge.textContent = 'Live';
+						statusBadge.className = 'badge badge-success badge-sm';
+					}
+					if (activityReconnectTimer) {
+						clearTimeout(activityReconnectTimer);
+						activityReconnectTimer = null;
+					}
+				};
+				
+				activitySource.onerror = (err) => {
+					console.error('[Activity SSE] Error:', err);
+					activitySource.close();
+					activitySource = null;
+					
+					const statusBadge = document.getElementById('activity-status');
+					if (statusBadge) {
+						statusBadge.textContent = 'Reconnecting...';
+						statusBadge.className = 'badge badge-warning badge-sm';
+					}
+					
+					if (!activityReconnectTimer) {
+						activityReconnectTimer = setTimeout(() => {
+							activityReconnectTimer = null;
+							connectActivitySSE();
+						}, 3000);
+					}
+				};
+			}
+			
+			connectActivitySSE();
+			
+			// Reconnect when page becomes visible
+			document.addEventListener('visibilitychange', () => {
+				if (!document.hidden && (!activitySource || activitySource.readyState === EventSource.CLOSED)) {
+					console.log('[Activity SSE] Reconnecting after visibility change');
+					if (activitySource) {
+						activitySource.close();
+						activitySource = null;
+					}
+					connectActivitySSE();
+				}
+			});
+			
+			// Cleanup
+			window.addEventListener('beforeunload', () => {
+				if (activitySource) {
+					activitySource.close();
+				}
+			});
+		});
+	</script>
+}
+
+templ ActivityItem(entry *ent.TaskHistory, index int) {
+	<li>
+		if index > 0 {
+			<hr class={ getTimelineColor(entry) }/>
+		}
+		<div class="timeline-start text-xs text-base-content/60">{ formatTimeAgo(entry.CreatedAt) }</div>
+		<div class="timeline-middle">
+			<div class="avatar placeholder">
+				<div class={
+					"rounded-full w-5 h-5 text-[10px]",
+					templ.KV("bg-info text-info-content", entry.Actor == "john"),
+					templ.KV("bg-primary text-primary-content", entry.Actor == "peter"),
+					templ.KV("bg-accent text-accent-content", entry.Actor != "john" && entry.Actor != "peter"),
+				}>
+					<span>{ getActorInitial(entry.Actor) }</span>
+				</div>
+			</div>
+		</div>
+		<div class="timeline-end timeline-box text-sm">
+			<span class="font-medium">{ getActorName(entry.Actor) }</span>
+			{ " " }
+			{ getActionText(entry.Action) }
+			{ " " }
+			if entry.Edges.Task != nil {
+				<span class="font-medium">"{ entry.Edges.Task.Title }"</span>
+			}
+			{ " " }
+			@getStatusBadge(entry.Action, entry.Details)
+		</div>
+		<hr class={ getTimelineColor(entry) }/>
+	</li>
 }
 
 func formatTimeAgo(t time.Time) string {
@@ -79,6 +202,22 @@ func formatTimeAgo(t time.Time) string {
 		return "1d ago"
 	}
 	return string(rune(days)) + "d ago"
+}
+
+func getActorName(actor string) string {
+	if actor == "" {
+		return "system"
+	}
+	return actor
+}
+
+func getActorInitial(actor string) string {
+	name := getActorName(actor)
+	if len(name) > 0 {
+		runes := []rune(name)
+		return string(runes[0:1])
+	}
+	return "S"
 }
 
 func getAssigneeFromDetails(details string) string {
