@@ -65,6 +65,7 @@ func (s *Server) Routes(staticFS fs.FS) *http.ServeMux {
 	// Datastar SSE routes for tasks
 	mux.HandleFunc("GET /datastar/tasks/add-form", s.TaskAddFormHandler)
 	mux.HandleFunc("POST /datastar/tasks", s.TaskCreateHandler)
+	mux.HandleFunc("GET /datastar/tasks/details/{id}", s.TaskDetailsHandler)
 	mux.HandleFunc("GET /datastar/tasks/edit/{id}", s.TaskEditFormHandler)
 	mux.HandleFunc("PUT /datastar/tasks/{id}", s.TaskUpdateHandler)
 	mux.HandleFunc("PATCH /datastar/tasks/{id}/column", s.TaskColumnUpdateHandler)
