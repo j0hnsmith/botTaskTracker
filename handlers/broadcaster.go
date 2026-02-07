@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/j0hnsmith/botTaskTracker/ent/task"
 	"github.com/j0hnsmith/botTaskTracker/templates/fragments"
@@ -91,11 +92,21 @@ func (s *Server) HandleBoardEvents(w http.ResponseWriter, r *http.Request) {
 	// Send initial connection message
 	_ = sse.PatchSignals([]byte(`{"boardConnected": true}`))
 	
+	// Keepalive ticker to prevent connection timeouts
+	keepalive := time.NewTicker(30 * time.Second)
+	defer keepalive.Stop()
+	
 	// Listen for events or context cancellation
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-keepalive.C:
+			// Send keepalive comment to prevent timeout
+			w.Write([]byte(": keepalive\n\n"))
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
 		case event := <-eventChan:
 			// Handle the event based on type
 			// Don't return on error - log it and continue streaming

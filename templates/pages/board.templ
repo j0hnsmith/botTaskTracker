@@ -158,9 +158,29 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 			
 			connectSSE();
 			
-			// Reconnect when page becomes visible
+			// Reconnect when page becomes visible or focused
 			document.addEventListener('visibilitychange', () => {
-				if (!document.hidden && !eventSource) {
+				if (!document.hidden) {
+					// Check if connection is dead and reconnect
+					if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+						console.log('[Board SSE] Reconnecting after visibility change');
+						if (eventSource) {
+							eventSource.close();
+							eventSource = null;
+						}
+						connectSSE();
+					}
+				}
+			});
+			
+			window.addEventListener('focus', () => {
+				// Also check on window focus (tab switch)
+				if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+					console.log('[Board SSE] Reconnecting after focus');
+					if (eventSource) {
+						eventSource.close();
+						eventSource = null;
+					}
 					connectSSE();
 				}
 			});
