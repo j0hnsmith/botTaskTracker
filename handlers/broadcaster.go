@@ -117,6 +117,9 @@ func (s *Server) HandleEvents(w http.ResponseWriter, r *http.Request) {
 	
 	// Send initial connection message
 	_ = sse.PatchSignals([]byte(`{"sseConnected": true}`))
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 	
 	// Keepalive ticker to prevent connection timeouts
 	keepalive := time.NewTicker(30 * time.Second)
