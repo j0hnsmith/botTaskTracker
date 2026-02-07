@@ -69,6 +69,7 @@ func (s *Server) Routes(staticFS fs.FS) *http.ServeMux {
 	mux.HandleFunc("GET /datastar/tasks/edit/{id}", s.TaskEditFormHandler)
 	mux.HandleFunc("PUT /datastar/tasks/{id}", s.TaskUpdateHandler)
 	mux.HandleFunc("PATCH /datastar/tasks/{id}/column", s.TaskColumnUpdateHandler)
+	mux.HandleFunc("PATCH /datastar/tasks/{id}/position", s.TaskPositionUpdateHandler)
 	mux.HandleFunc("DELETE /datastar/tasks/{id}", s.TaskDeleteHandler)
 	mux.HandleFunc("POST /datastar/tasks/{id}/move", s.TaskMoveHandler)
 	mux.HandleFunc("POST /datastar/tasks/{id}/assign", s.TaskAssignHandler)

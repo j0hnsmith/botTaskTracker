@@ -18,6 +18,11 @@ lint:
 	@echo "Running golangci-lint..."
 	@go tool golangci-lint run --timeout 5m
 
+# Lint code
+lint:
+	@echo "Running golangci-lint..."
+	@go tool golangci-lint run --timeout 5m
+
 # Clean up binaries and build artifacts
 clean:
 	@echo "Cleaning up binaries..."

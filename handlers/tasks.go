@@ -469,9 +469,10 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Read column from request body
+	// Read column and position from request body
 	type ColumnUpdate struct {
-		Column string `json:"column"`
+		Column   string `json:"column"`
+		Position int    `json:"position"`
 	}
 	var update ColumnUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
@@ -497,12 +498,9 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 	oldColumn := existingTask.Column
 	newColumn := sanitizeColumn(update.Column)
 
-	// Update task column
-	updatedTask, err := s.Client.Task.UpdateOneID(id).
-		SetColumn(newColumn).
-		Save(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to update task column", "error", err)
+	// Update task column and reorder positions
+	if err := reorderTasksOnColumnChange(ctx, s.Client, id, oldColumn, newColumn, update.Position); err != nil {
+		slog.ErrorContext(ctx, "failed to reorder tasks", "error", err)
 		_ = sse.ConsoleError(err)
 		return
 	}
@@ -510,18 +508,18 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 	// Create history entry
 	details := fmt.Sprintf("moved from %s to %s", oldColumn, newColumn)
 	_, err = s.Client.TaskHistory.Create().
-		SetTaskID(updatedTask.ID).
+		SetTaskID(id).
 		SetAction("moved").
 		SetDetails(details).
-		SetActor(updatedTask.Assignee).
+		SetActor(existingTask.Assignee).
 		Save(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create history for column update", "error", err)
 	}
 
 	// Reload task with edges
-	updatedTask, err = s.Client.Task.Query().
-		Where(task.IDEQ(updatedTask.ID)).
+	updatedTask, err := s.Client.Task.Query().
+		Where(task.IDEQ(id)).
 		WithTags().
 		WithHistory().
 		Only(ctx)
@@ -531,13 +529,18 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Render updated card
-	var htmlBuilder strings.Builder
-	err = fragments.TaskCard(updatedTask, newColumn).Render(ctx, &htmlBuilder)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to render task card", "error", err)
+	// Render the entire column to reflect reordering
+	if err := renderColumnUpdate(ctx, sse, s.Client, newColumn); err != nil {
+		slog.ErrorContext(ctx, "failed to render column update", "error", err)
 		_ = sse.ConsoleError(err)
 		return
+	}
+
+	// Also render old column if different
+	if oldColumn != newColumn {
+		if err := renderColumnUpdate(ctx, sse, s.Client, oldColumn); err != nil {
+			slog.ErrorContext(ctx, "failed to render old column", "error", err)
+		}
 	}
 
 	// Broadcast event to other clients
@@ -547,13 +550,85 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		Column: newColumn,
 	})
 
-	// Replace the task card in the DOM
-	_ = sse.PatchElements(htmlBuilder.String())
-
 	slog.InfoContext(ctx, "task column updated via drag-drop", 
 		"task_id", id, 
 		"from", oldColumn, 
-		"to", newColumn)
+		"to", newColumn,
+		"position", update.Position)
+}
+
+// TaskPositionUpdateHandler updates a task's position within the same column.
+func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Read position from request body
+	type PositionUpdate struct {
+		Column   string `json:"column"`
+		Position int    `json:"position"`
+	}
+	var update PositionUpdate
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Create SSE response
+	sse := datastar.NewSSE(w, r)
+
+	// Get existing task
+	existingTask, err := s.Client.Task.Query().
+		Where(task.IDEQ(id)).
+		Only(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to find task for position update", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	column := sanitizeColumn(update.Column)
+
+	// Reorder tasks within the same column
+	if err := reorderTasksInColumn(ctx, s.Client, id, column, update.Position); err != nil {
+		slog.ErrorContext(ctx, "failed to reorder tasks in column", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	// Create history entry
+	_, err = s.Client.TaskHistory.Create().
+		SetTaskID(id).
+		SetAction("reordered").
+		SetDetails(fmt.Sprintf("reordered in %s", column)).
+		SetActor(existingTask.Assignee).
+		Save(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to create history for position update", "error", err)
+	}
+
+	// Render the entire column to reflect reordering
+	if err := renderColumnUpdate(ctx, sse, s.Client, column); err != nil {
+		slog.ErrorContext(ctx, "failed to render column update", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	// Broadcast event to other clients
+	s.Broadcaster.Broadcast(BoardEvent{
+		Type:   "task_reordered",
+		TaskID: id,
+		Column: column,
+	})
+
+	slog.InfoContext(ctx, "task position updated within column", 
+		"task_id", id, 
+		"column", column,
+		"new_position", update.Position)
 }
 
 // Stub handlers for move, assign, tag operations
@@ -561,6 +636,168 @@ func (s *Server) TaskMoveHandler(w http.ResponseWriter, r *http.Request)      {}
 func (s *Server) TaskAssignHandler(w http.ResponseWriter, r *http.Request)    {}
 func (s *Server) TaskAddTagHandler(w http.ResponseWriter, r *http.Request)    {}
 func (s *Server) TaskRemoveTagHandler(w http.ResponseWriter, r *http.Request) {}
+
+// reorderTasksOnColumnChange updates positions when a task moves between columns.
+func reorderTasksOnColumnChange(ctx context.Context, client *ent.Client, taskID int, fromColumn, toColumn string, newPosition int) error {
+	// Get all tasks in the destination column, ordered by position
+	destTasks, err := client.Task.Query().
+		Where(task.ColumnEQ(toColumn), task.IDNEQ(taskID)).
+		Order(ent.Asc(task.FieldPosition)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Insert task at new position and shift others
+	bulkUpdate := make([]*ent.TaskUpdateOne, 0, len(destTasks)+1)
+	
+	// Set the moved task's position and column
+	bulkUpdate = append(bulkUpdate, client.Task.UpdateOneID(taskID).
+		SetColumn(toColumn).
+		SetPosition(newPosition))
+
+	// Update positions for tasks at or after the new position
+	for i, t := range destTasks {
+		if i >= newPosition {
+			bulkUpdate = append(bulkUpdate, client.Task.UpdateOneID(t.ID).
+				SetPosition(i + 1))
+		} else {
+			bulkUpdate = append(bulkUpdate, client.Task.UpdateOneID(t.ID).
+				SetPosition(i))
+		}
+	}
+
+	// Execute all updates
+	for _, update := range bulkUpdate {
+		if _, err := update.Save(ctx); err != nil {
+			return err
+		}
+	}
+
+	// Reorder tasks in the source column
+	if fromColumn != toColumn {
+		return recompactColumnPositions(ctx, client, fromColumn)
+	}
+
+	return nil
+}
+
+// reorderTasksInColumn updates positions when a task is reordered within the same column.
+func reorderTasksInColumn(ctx context.Context, client *ent.Client, taskID int, column string, newPosition int) error {
+	// Get the task's current position
+	movedTask, err := client.Task.Query().
+		Where(task.IDEQ(taskID)).
+		Only(ctx)
+	if err != nil {
+		return err
+	}
+	oldPosition := movedTask.Position
+
+	// Get all tasks in the column, ordered by position
+	tasks, err := client.Task.Query().
+		Where(task.ColumnEQ(column)).
+		Order(ent.Asc(task.FieldPosition)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Build new position map
+	bulkUpdate := make([]*ent.TaskUpdateOne, 0, len(tasks))
+	
+	for i, t := range tasks {
+		var targetPosition int
+		
+		if t.ID == taskID {
+			// This is the task being moved
+			targetPosition = newPosition
+		} else if oldPosition < newPosition {
+			// Moving down: shift tasks between old and new position up
+			if i > oldPosition && i <= newPosition {
+				targetPosition = i - 1
+			} else {
+				targetPosition = i
+			}
+		} else if oldPosition > newPosition {
+			// Moving up: shift tasks between new and old position down
+			if i >= newPosition && i < oldPosition {
+				targetPosition = i + 1
+			} else {
+				targetPosition = i
+			}
+		} else {
+			// No position change
+			targetPosition = i
+		}
+
+		if t.Position != targetPosition {
+			bulkUpdate = append(bulkUpdate, client.Task.UpdateOneID(t.ID).
+				SetPosition(targetPosition))
+		}
+	}
+
+	// Execute all updates
+	for _, update := range bulkUpdate {
+		if _, err := update.Save(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// recompactColumnPositions ensures positions in a column are sequential starting from 0.
+func recompactColumnPositions(ctx context.Context, client *ent.Client, column string) error {
+	tasks, err := client.Task.Query().
+		Where(task.ColumnEQ(column)).
+		Order(ent.Asc(task.FieldPosition)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	for i, t := range tasks {
+		if t.Position != i {
+			if _, err := client.Task.UpdateOneID(t.ID).
+				SetPosition(i).
+				Save(ctx); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// renderColumnUpdate renders all tasks in a column and sends them via SSE.
+func renderColumnUpdate(ctx context.Context, sse *datastar.ServerSentEventGenerator, client *ent.Client, column string) error {
+	// Get all tasks in the column
+	tasks, err := client.Task.Query().
+		Where(task.ColumnEQ(column)).
+		WithTags().
+		WithHistory(func(q *ent.TaskHistoryQuery) {
+			q.Order(ent.Desc(taskhistory.FieldCreatedAt))
+		}).
+		Order(ent.Asc(task.FieldPosition), ent.Asc(task.FieldCreatedAt)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Render all task cards
+	var htmlBuilder strings.Builder
+	for _, t := range tasks {
+		if err := fragments.TaskCard(t, column).Render(ctx, &htmlBuilder); err != nil {
+			return err
+		}
+	}
+
+	// Replace the entire column content
+	_ = sse.PatchElements(htmlBuilder.String(),
+		datastar.WithSelector("#column-"+column))
+
+	return nil
+}
 
 // Helper functions
 func sanitizeColumn(value string) string {
