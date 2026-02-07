@@ -56,6 +56,12 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 	<script src="/static/scripts/drag-drop.js"></script>
 	<!-- Real-time updates via unified SSE connection -->
 	<script>
+		// Generate unique client nonce BEFORE SSE connects (needed for echo-back prevention)
+		if (!window.clientNonce) {
+			window.clientNonce = crypto.randomUUID();
+			console.log('[SSE] Client nonce:', window.clientNonce);
+		}
+		
 		document.addEventListener('DOMContentLoaded', () => {
 			let eventSource = null;
 			let reconnectTimer = null;
@@ -84,7 +90,20 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 				
 				eventSource.addEventListener('datastar-patch-signals', (e) => {
 					console.log('[SSE] Received patch-signals:', e.data);
-					// Parse and apply signal updates if needed
+					// Parse signals to extract lastEventNonce
+					try {
+						const data = e.data;
+						if (data.includes('signals ')) {
+							const signalsJson = data.split('signals ')[1];
+							const signals = JSON.parse(signalsJson);
+							if (signals && signals.lastEventNonce) {
+								window.lastSseNonce = signals.lastEventNonce;
+								console.log('[SSE] Event nonce:', signals.lastEventNonce);
+							}
+						}
+					} catch (err) {
+						// Ignore parse errors
+					}
 				});
 				
 				eventSource.addEventListener('datastar-patch-elements', (e) => {
@@ -104,6 +123,13 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 							} else if (line.startsWith('elements ')) {
 								html = line.substring(9);
 							}
+						}
+						
+						// Ignore column patches if they have our own nonce (echo-back prevention)
+						if (selector && selector.startsWith('#column-') && window.lastSseNonce === window.clientNonce) {
+							console.log('[SSE] Ignoring own column patch (nonce match)');
+							window.lastSseNonce = null; // Clear after checking
+							return;
 						}
 						
 						// Handle remove mode

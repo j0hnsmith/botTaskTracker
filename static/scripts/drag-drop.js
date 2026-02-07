@@ -111,7 +111,8 @@ async function updateTaskColumn(taskId, newColumn, newPosition, oldColumn) {
     const response = await fetch(`/datastar/tasks/${taskId}/column`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Client-Nonce': window.clientNonce
       },
       body: JSON.stringify({ 
         column: newColumn,
@@ -151,7 +152,8 @@ async function updateTaskPosition(taskId, column, newPosition) {
     const response = await fetch(`/datastar/tasks/${taskId}/position`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Client-Nonce': window.clientNonce
       },
       body: JSON.stringify({ 
         column: column,

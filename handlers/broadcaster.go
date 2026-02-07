@@ -21,6 +21,7 @@ type UnifiedEvent struct {
 	TaskID    int
 	HistoryID int
 	Column    string
+	Nonce     string // Client nonce to prevent echo-back
 }
 
 // Broadcaster manages SSE connections and broadcasts unified events
@@ -54,12 +55,13 @@ func (b *Broadcaster) Unregister(client chan UnifiedEvent) {
 }
 
 // BroadcastBoard sends a board event to all connected clients
-func (b *Broadcaster) BroadcastBoard(taskID int, eventType, column string) {
+func (b *Broadcaster) BroadcastBoard(taskID int, eventType, column, nonce string) {
 	event := UnifiedEvent{
 		EventType: "board",
 		Type:      eventType,
 		TaskID:    taskID,
 		Column:    column,
+		Nonce:     nonce,
 	}
 	b.broadcast(event)
 }
@@ -150,7 +152,13 @@ func (s *Server) HandleEvents(w http.ResponseWriter, r *http.Request) {
 
 // handleBoardEvent processes a single board event and sends updates via SSE
 func (s *Server) handleBoardEvent(ctx context.Context, sse *datastar.ServerSentEventGenerator, event UnifiedEvent) error {
-	println("handleBoardEvent:", event.Type, "taskID:", event.TaskID)
+	println("handleBoardEvent:", event.Type, "taskID:", event.TaskID, "nonce:", event.Nonce)
+	
+	// Send nonce signal before each patch so frontend can check
+	if event.Nonce != "" {
+		_ = sse.PatchSignals([]byte(`{"lastEventNonce": "` + event.Nonce + `"}`))
+	}
+	
 	switch event.Type {
 	case "task_created":
 		// Load task with edges

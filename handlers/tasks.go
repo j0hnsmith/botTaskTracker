@@ -248,7 +248,7 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.BroadcastBoard(newTask.ID, "task_created", column)
+	s.Broadcaster.BroadcastBoard(newTask.ID, "task_created", column, "")
 
 	// Clear error, append card to column, close modal
 	_ = sse.PatchElements(`<div id="add-error" class="text-error text-sm hidden"></div>`)
@@ -456,7 +456,7 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_updated", updatedTask.Column)
+	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_updated", updatedTask.Column, "")
 
 	_ = sse.PatchElements(`<div id="edit-error" class="text-error text-sm hidden"></div>`)
 	_ = sse.PatchElements(htmlBuilder.String())
@@ -485,7 +485,7 @@ func (s *Server) TaskDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.BroadcastBoard(id, "task_deleted", "")
+	s.Broadcaster.BroadcastBoard(id, "task_deleted", "", "")
 
 	_ = sse.RemoveElement("#task-card-" + strconv.Itoa(id))
 }
@@ -500,6 +500,9 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Extract client nonce from header
+	clientNonce := r.Header.Get("X-Client-Nonce")
+
 	// Read column and position from request body
 	type ColumnUpdate struct {
 		Column   string `json:"column"`
@@ -511,7 +514,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Create SSE response
+	// Create SSE response (just for status/errors, not for data)
 	sse := datastar.NewSSE(w, r)
 
 	// Get existing task
@@ -563,28 +566,19 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Render the entire column to reflect reordering
-	if err := renderColumnUpdate(ctx, sse, s.Client, newColumn); err != nil {
-		slog.ErrorContext(ctx, "failed to render column update", "error", err)
-		_ = sse.ConsoleError(err)
-		return
-	}
+	// Don't send direct SSE response - let the broadcast handle ALL updates
+	// The nonce check will prevent echo-back to the originating client
+	// Other clients will receive and apply the broadcast
 
-	// Also render old column if different
-	if oldColumn != newColumn {
-		if err := renderColumnUpdate(ctx, sse, s.Client, oldColumn); err != nil {
-			slog.ErrorContext(ctx, "failed to render old column", "error", err)
-		}
-	}
-
-	// Broadcast event to other clients
-	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_moved", newColumn)
+	// Broadcast event to all clients (originator will ignore due to nonce match)
+	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_moved", newColumn, clientNonce)
 
 	slog.InfoContext(ctx, "task column updated via drag-drop", 
 		"task_id", id, 
 		"from", oldColumn, 
 		"to", newColumn,
-		"position", update.Position)
+		"position", update.Position,
+		"nonce", clientNonce)
 }
 
 // TaskPositionUpdateHandler updates a task's position within the same column.
@@ -597,6 +591,9 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Extract client nonce from header
+	clientNonce := r.Header.Get("X-Client-Nonce")
+
 	// Read position from request body
 	type PositionUpdate struct {
 		Column   string `json:"column"`
@@ -608,7 +605,7 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Create SSE response
+	// Create SSE response (just for status/errors, not for data)
 	sse := datastar.NewSSE(w, r)
 
 	// Get existing task
@@ -642,20 +639,18 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 	}
 	// Note: We don't broadcast activity for reordering - it's too noisy and less meaningful
 
-	// Render the entire column to reflect reordering
-	if err := renderColumnUpdate(ctx, sse, s.Client, column); err != nil {
-		slog.ErrorContext(ctx, "failed to render column update", "error", err)
-		_ = sse.ConsoleError(err)
-		return
-	}
+	// Don't send direct SSE response - let the broadcast handle ALL updates
+	// The nonce check will prevent echo-back to the originating client
+	// Other clients will receive and apply the broadcast
 
-	// Broadcast event to other clients
-	s.Broadcaster.BroadcastBoard(id, "task_reordered", column)
+	// Broadcast event to all clients (originator will ignore due to nonce match)
+	s.Broadcaster.BroadcastBoard(id, "task_reordered", column, clientNonce)
 
 	slog.InfoContext(ctx, "task position updated within column", 
 		"task_id", id, 
 		"column", column,
-		"new_position", update.Position)
+		"new_position", update.Position,
+		"nonce", clientNonce)
 }
 
 // Stub handlers for move, assign, tag operations
