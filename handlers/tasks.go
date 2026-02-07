@@ -514,9 +514,6 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Create SSE response (just for status/errors, not for data)
-	sse := datastar.NewSSE(w, r)
-
 	// Get existing task
 	existingTask, err := s.Client.Task.Query().
 		Where(task.IDEQ(id)).
@@ -525,7 +522,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		Only(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to find task for column update", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Task not found", http.StatusNotFound)
 		return
 	}
 
@@ -535,7 +532,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 	// Update task column and reorder positions
 	if err := reorderTasksOnColumnChange(ctx, s.Client, id, oldColumn, newColumn, update.Position); err != nil {
 		slog.ErrorContext(ctx, "failed to reorder tasks", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Failed to update task", http.StatusInternalServerError)
 		return
 	}
 
@@ -562,7 +559,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		Only(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to reload task", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Failed to reload task", http.StatusInternalServerError)
 		return
 	}
 
@@ -579,6 +576,9 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		"to", newColumn,
 		"position", update.Position,
 		"nonce", clientNonce)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
 }
 
 // TaskPositionUpdateHandler updates a task's position within the same column.
@@ -605,16 +605,13 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Create SSE response (just for status/errors, not for data)
-	sse := datastar.NewSSE(w, r)
-
 	// Get existing task
 	existingTask, err := s.Client.Task.Query().
 		Where(task.IDEQ(id)).
 		Only(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to find task for position update", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Task not found", http.StatusNotFound)
 		return
 	}
 
@@ -623,7 +620,7 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 	// Reorder tasks within the same column
 	if err := reorderTasksInColumn(ctx, s.Client, id, column, update.Position); err != nil {
 		slog.ErrorContext(ctx, "failed to reorder tasks in column", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Failed to update position", http.StatusInternalServerError)
 		return
 	}
 
@@ -651,6 +648,9 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 		"column", column,
 		"new_position", update.Position,
 		"nonce", clientNonce)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
 }
 
 // Stub handlers for move, assign, tag operations

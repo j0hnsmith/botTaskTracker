@@ -15,6 +15,9 @@ function initDragDrop() {
       dragClass: 'sortable-drag',
       chosenClass: 'sortable-chosen',
       handle: '.task-card',
+      delay: 150,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 5,
       
       // Visual feedback
       onChoose: function(evt) {
@@ -75,6 +78,9 @@ async function refreshColumn(columnKey) {
         dragClass: 'sortable-drag',
         chosenClass: 'sortable-chosen',
         handle: '.task-card',
+        delay: 150,
+        delayOnTouchOnly: true,
+        touchStartThreshold: 5,
         
         onChoose: function(evt) {
           evt.item.style.opacity = '0.5';
@@ -122,19 +128,12 @@ async function updateTaskColumn(taskId, newColumn, newPosition, oldColumn) {
     
     if (!response.ok) {
       console.error('Failed to update task column:', response.statusText);
-      // Refresh both columns to revert the UI change
-      await Promise.all([
-        refreshColumn(oldColumn),
-        refreshColumn(newColumn)
-      ]);
+      // Don't refresh - let user see the error
       return;
     }
     
-    // Success - refresh both affected columns to show persisted state
-    await Promise.all([
-      refreshColumn(oldColumn),
-      refreshColumn(newColumn)
-    ]);
+    // Success - don't refresh, card is already in place visually
+    console.log('Column update successful');
     
   } catch (error) {
     console.error('Error updating task column:', error);
@@ -163,13 +162,12 @@ async function updateTaskPosition(taskId, column, newPosition) {
     
     if (!response.ok) {
       console.error('Failed to update task position:', response.statusText);
-      // Refresh column to revert the UI change
-      await refreshColumn(column);
+      // Don't refresh - let user see the error
       return;
     }
     
-    // Success - refresh column to show persisted state
-    await refreshColumn(column);
+    // Success - don't refresh, card is already in place visually
+    console.log('Position update successful');
     
   } catch (error) {
     console.error('Error updating task position:', error);
