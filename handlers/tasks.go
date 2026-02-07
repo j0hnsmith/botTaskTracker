@@ -224,6 +224,46 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 	_ = sse.PatchElements(`<div id="modal-container"></div>`)
 }
 
+// TaskDetailsHandler returns a task details modal via SSE.
+func (s *Server) TaskDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r)
+
+	// Get task from database with all edges
+	t, err := s.Client.Task.Query().
+		Where(task.IDEQ(id)).
+		WithTags().
+		WithHistory(func(q *ent.TaskHistoryQuery) {
+			q.Order(ent.Desc(taskhistory.FieldCreatedAt))
+		}).
+		Only(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get task", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	// Render modal with task details
+	var htmlBuilder strings.Builder
+	err = fragments.TaskDetailsModal(t).Render(ctx, &htmlBuilder)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to render details modal", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	// Insert modal and show it
+	_ = sse.PatchElements(`<div id="modal-container">` + htmlBuilder.String() + `</div>`)
+	_ = sse.ExecuteScript("document.getElementById('task-details-modal').showModal()")
+}
+
 // TaskEditFormHandler returns a populated edit form via SSE.
 func (s *Server) TaskEditFormHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

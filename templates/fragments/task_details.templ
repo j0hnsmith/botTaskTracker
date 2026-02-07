@@ -1,0 +1,198 @@
+package fragments
+
+import "github.com/j0hnsmith/botTaskTracker/ent"
+import "time"
+import "strconv"
+
+templ TaskDetailsModal(task *ent.Task) {
+	<dialog id="task-details-modal" class="modal">
+		<div class="modal-box max-w-2xl">
+			<form method="dialog">
+				<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+			</form>
+			<!-- Header with title and status -->
+			<div class="flex items-start justify-between mb-4">
+				<div class="flex-1">
+					<h3 class={
+						"font-bold text-2xl mb-2",
+						templ.KV("line-through text-base-content/60", task.Column == "done"),
+					}>
+						{ task.Title }
+					</h3>
+					<div class="flex items-center gap-2">
+						<div class={
+							"badge",
+							templ.KV("badge-neutral", task.Column == "backlog"),
+							templ.KV("badge-warning", task.Column == "in_progress"),
+							templ.KV("badge-secondary", task.Column == "review"),
+							templ.KV("badge-success", task.Column == "done"),
+						}>
+							{ getColumnDisplayName(task.Column) }
+						</div>
+						if task.Assignee != "" {
+							<div class="flex items-center gap-1">
+								<div class="avatar placeholder">
+									<div class={
+										"rounded-full w-6 h-6 text-xs",
+										templ.KV("bg-info text-info-content", task.Assignee == "john"),
+										templ.KV("bg-primary text-primary-content", task.Assignee == "peter"),
+										templ.KV("bg-accent text-accent-content", task.Assignee != "john" && task.Assignee != "peter"),
+									}>
+										<span>{ string([]rune(task.Assignee)[0]) }</span>
+									</div>
+								</div>
+								<span class="text-sm font-medium">{ task.Assignee }</span>
+							</div>
+						}
+					</div>
+				</div>
+				<button 
+					class="btn btn-sm btn-ghost gap-2"
+					data-task-id={ strconv.Itoa(task.ID) }
+					data-on:click="document.getElementById('task-details-modal').close(); @get('/datastar/tasks/edit/'+el.dataset.taskId)"
+				>
+					✏️ Edit
+				</button>
+			</div>
+			
+			<div class="divider my-2"></div>
+			
+			<!-- Description -->
+			<div class="mb-6">
+				<h4 class="font-semibold text-sm text-base-content/70 mb-2">Description</h4>
+				if task.Description != "" {
+					<p class="text-base whitespace-pre-wrap">{ task.Description }</p>
+				} else {
+					<p class="text-base-content/50 italic">No description provided</p>
+				}
+			</div>
+			
+			<!-- Tags -->
+			if len(task.Edges.Tags) > 0 {
+				<div class="mb-6">
+					<h4 class="font-semibold text-sm text-base-content/70 mb-2">Tags</h4>
+					<div class="flex flex-wrap gap-2">
+						for _, tag := range task.Edges.Tags {
+							<div class={
+								"badge badge-lg",
+								templ.KV("badge-info", tag.Value == "feature" || tag.Key == "feature"),
+								templ.KV("badge-error", tag.Value == "bug" || tag.Key == "bug" || (tag.Key == "priority" && tag.Value == "high")),
+								templ.KV("badge-warning", tag.Value == "ops" || tag.Key == "ops" || tag.Value == "critical" || tag.Key == "critical" || tag.Value == "testing" || tag.Key == "testing"),
+								templ.KV("badge-success", tag.Value == "enhancement" || tag.Key == "enhancement" || tag.Value == "complete" || tag.Key == "complete" || tag.Value == "daisyui" || tag.Key == "daisyui"),
+								templ.KV("badge-secondary", tag.Value == "auth" || tag.Key == "auth" || tag.Value == "ui" || tag.Key == "ui"),
+								templ.KV("badge-accent", tag.Value == "docs" || tag.Key == "docs" || tag.Value == "infra" || tag.Key == "infra"),
+								templ.KV("badge-neutral", (tag.Value != "feature" && tag.Key != "feature") && (tag.Value != "bug" && tag.Key != "bug") && tag.Key != "priority" && (tag.Value != "ops" && tag.Key != "ops") && (tag.Value != "critical" && tag.Key != "critical") && (tag.Value != "testing" && tag.Key != "testing") && (tag.Value != "enhancement" && tag.Key != "enhancement") && (tag.Value != "complete" && tag.Key != "complete") && (tag.Value != "auth" && tag.Key != "auth") && (tag.Value != "ui" && tag.Key != "ui") && (tag.Value != "docs" && tag.Key != "docs") && (tag.Value != "infra" && tag.Key != "infra") && (tag.Value != "daisyui" && tag.Key != "daisyui")),
+							}>
+								{ tag.Key }if tag.Value != "" {
+									:{ tag.Value }
+								}
+							</div>
+						}
+					</div>
+				</div>
+			}
+			
+			<!-- Metadata -->
+			<div class="mb-6">
+				<h4 class="font-semibold text-sm text-base-content/70 mb-2">Metadata</h4>
+				<div class="grid grid-cols-2 gap-3 text-sm">
+					<div class="flex flex-col gap-1">
+						<span class="text-base-content/60">Task ID</span>
+						<span class="font-mono font-medium">#{strconv.Itoa(task.ID)}</span>
+					</div>
+					<div class="flex flex-col gap-1">
+						<span class="text-base-content/60">Status</span>
+						<span class="font-medium">{ getColumnDisplayName(task.Column) }</span>
+					</div>
+					<div class="flex flex-col gap-1">
+						<span class="text-base-content/60">Created</span>
+						<span class="font-medium">{ formatDetailTime(task.CreatedAt) }</span>
+					</div>
+					<div class="flex flex-col gap-1">
+						<span class="text-base-content/60">Last Updated</span>
+						<span class="font-medium">{ formatDetailTime(task.UpdatedAt) }</span>
+					</div>
+					if task.Assignee != "" {
+						<div class="flex flex-col gap-1">
+							<span class="text-base-content/60">Assignee</span>
+							<span class="font-medium">{ task.Assignee }</span>
+						</div>
+					}
+					<div class="flex flex-col gap-1">
+						<span class="text-base-content/60">Position</span>
+						<span class="font-medium">{ strconv.Itoa(task.Position) }</span>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Activity History -->
+			if len(task.Edges.History) > 0 {
+				<div class="mb-4">
+					<h4 class="font-semibold text-sm text-base-content/70 mb-2">Activity History</h4>
+					<div class="overflow-x-auto max-h-64">
+						<table class="table table-sm">
+							<thead>
+								<tr>
+									<th>Action</th>
+									<th>Details</th>
+									<th>Actor</th>
+									<th>Time</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, h := range task.Edges.History {
+									<tr>
+										<td class="font-medium">{ h.Action }</td>
+										<td class="text-base-content/70">{ h.Details }</td>
+										<td>
+											if h.Actor != "" {
+												<span class="badge badge-sm badge-ghost">{ h.Actor }</span>
+											} else {
+												<span class="text-base-content/40">—</span>
+											}
+										</td>
+										<td class="text-xs text-base-content/60">{ formatDetailTime(h.CreatedAt) }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			}
+			
+			<!-- Modal actions -->
+			<div class="modal-action">
+				<button 
+					type="button" 
+					class="btn btn-ghost" 
+					data-on:click="document.getElementById('task-details-modal').close()"
+				>
+					Close
+				</button>
+			</div>
+		</div>
+		<!-- Click outside to close -->
+		<form method="dialog" class="modal-backdrop">
+			<button>close</button>
+		</form>
+	</dialog>
+}
+
+func getColumnDisplayName(column string) string {
+	switch column {
+	case "backlog":
+		return "Backlog"
+	case "in_progress":
+		return "In Progress"
+	case "review":
+		return "Review"
+	case "done":
+		return "Done"
+	default:
+		return column
+	}
+}
+
+func formatDetailTime(t time.Time) string {
+	return t.Format("Jan 2, 2006 at 3:04 PM")
+}
