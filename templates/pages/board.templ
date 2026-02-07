@@ -53,8 +53,126 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 	</style>
 	<!-- Drag-and-drop libraries -->
 	<script src="/static/scripts/sortable.min.js"></script>
-	<!-- Connect to SSE board updates on page load -->
-	<div data-on-load="@get('/datastar/board/events')" style="display:none;"></div>
+	<!-- Real-time board updates via SSE -->
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			let eventSource = null;
+			let reconnectTimer = null;
+			
+			function connectSSE() {
+				if (eventSource) return;
+				
+				console.log('[Board SSE] Connecting...');
+				eventSource = new EventSource('/datastar/board/events');
+				
+				eventSource.addEventListener('datastar-patch-signals', (e) => {
+					console.log('[Board SSE] Received patch-signals:', e.data);
+					// Parse and apply signal updates if needed
+				});
+				
+				eventSource.addEventListener('datastar-patch-elements', (e) => {
+					console.log('[Board SSE] Received patch-elements');
+					try {
+						// Parse the SSE data
+						const lines = e.data.split('\n');
+						let selector = '';
+						let html = '';
+						
+						for (const line of lines) {
+							if (line.startsWith('selector ')) {
+								selector = line.substring(9);
+							} else if (line.startsWith('elements ')) {
+								html = line.substring(9);
+							}
+						}
+						
+						if (html) {
+							// Apply the HTML patch
+							if (selector) {
+								// Patch specific element
+								const target = document.querySelector(selector);
+								if (target) {
+									target.innerHTML = html;
+									console.log('[Board SSE] Patched', selector);
+								}
+							} else {
+								// Replace element by ID from HTML
+								const tempDiv = document.createElement('div');
+								tempDiv.innerHTML = html;
+								const newElement = tempDiv.firstElementChild;
+								if (newElement && newElement.id) {
+									const oldElement = document.getElementById(newElement.id);
+									if (oldElement) {
+										oldElement.replaceWith(newElement);
+										console.log('[Board SSE] Replaced', newElement.id);
+									}
+								}
+							}
+						}
+					} catch (err) {
+						console.error('[Board SSE] Error processing patch:', err);
+					}
+				});
+				
+				eventSource.addEventListener('datastar-remove-elements', (e) => {
+					console.log('[Board SSE] Received remove-elements:', e.data);
+					try {
+						const lines = e.data.split('\n');
+						for (const line of lines) {
+							if (line.startsWith('selector ')) {
+								const selector = line.substring(9);
+								const element = document.querySelector(selector);
+								if (element) {
+									element.remove();
+									console.log('[Board SSE] Removed', selector);
+								}
+							}
+						}
+					} catch (err) {
+						console.error('[Board SSE] Error removing element:', err);
+					}
+				});
+				
+				eventSource.onopen = () => {
+					console.log('[Board SSE] Connected');
+					if (reconnectTimer) {
+						clearTimeout(reconnectTimer);
+						reconnectTimer = null;
+					}
+				};
+				
+				eventSource.onerror = (err) => {
+					console.error('[Board SSE] Error:', err);
+					eventSource.close();
+					eventSource = null;
+					
+					// Reconnect after 3 seconds
+					if (!reconnectTimer) {
+						reconnectTimer = setTimeout(() => {
+							reconnectTimer = null;
+							connectSSE();
+						}, 3000);
+					}
+				};
+			}
+			
+			connectSSE();
+			
+			// Reconnect when page becomes visible
+			document.addEventListener('visibilitychange', () => {
+				if (!document.hidden && !eventSource) {
+					connectSSE();
+				}
+			});
+			
+			// Cleanup on unload
+			window.addEventListener('beforeunload', () => {
+				if (eventSource) {
+					eventSource.close();
+				}
+			});
+		});
+	</script>
 	<!-- Header with breadcrumbs and stats -->
 	<div class="navbar bg-base-100 border-b border-base-300">
 		<div class="flex-1">

@@ -98,8 +98,10 @@ func (s *Server) HandleBoardEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		case event := <-eventChan:
 			// Handle the event based on type
+			// Don't return on error - log it and continue streaming
 			if err := s.handleBoardEvent(ctx, sse, event); err != nil {
-				return
+				println("handleBoardEvent error:", err.Error())
+				// Continue the loop - don't close the SSE connection
 			}
 		}
 	}
