@@ -53,12 +53,24 @@ func (b *Broadcaster) Unregister(client chan BoardEvent) {
 func (b *Broadcaster) Broadcast(event BoardEvent) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+	
+	clientCount := len(b.clients)
+	sent := 0
+	skipped := 0
+	
 	for client := range b.clients {
 		select {
 		case client <- event:
+			sent++
 		default:
 			// Client channel is full, skip
+			skipped++
 		}
+	}
+	
+	// Log broadcast stats (will appear in systemd journal)
+	if clientCount > 0 {
+		println("Broadcast:", event.Type, "taskID:", event.TaskID, "clients:", clientCount, "sent:", sent, "skipped:", skipped)
 	}
 }
 
@@ -95,8 +107,9 @@ func (s *Server) HandleBoardEvents(w http.ResponseWriter, r *http.Request) {
 
 // handleBoardEvent processes a single board event and sends updates via SSE
 func (s *Server) handleBoardEvent(ctx context.Context, sse *datastar.ServerSentEventGenerator, event BoardEvent) error {
+	println("handleBoardEvent:", event.Type, "taskID:", event.TaskID)
 	switch event.Type {
-	case "task_created", "task_updated", "task_moved":
+	case "task_created":
 		// Load task with edges
 		t, err := s.Client.Task.Query().
 			Where(task.IDEQ(event.TaskID)).
@@ -114,16 +127,55 @@ func (s *Server) handleBoardEvent(ctx context.Context, sse *datastar.ServerSentE
 			return err
 		}
 		
-		// Send the update
-		if event.Type == "task_created" {
-			// Append to column
-			_ = sse.PatchElements(htmlBuilder.String(),
-				datastar.WithModeAppend(),
-				datastar.WithSelector("#column-"+t.Column))
-		} else {
-			// Replace existing card
-			_ = sse.PatchElements(htmlBuilder.String())
+		// Append to column
+		_ = sse.PatchElements(htmlBuilder.String(),
+			datastar.WithModeAppend(),
+			datastar.WithSelector("#column-"+t.Column))
+		
+	case "task_updated":
+		// Load task with edges
+		t, err := s.Client.Task.Query().
+			Where(task.IDEQ(event.TaskID)).
+			WithTags().
+			WithHistory().
+			Only(ctx)
+		if err != nil {
+			return err
 		}
+		
+		// Render the task card
+		var htmlBuilder strings.Builder
+		err = fragments.TaskCard(t, t.Column).Render(ctx, &htmlBuilder)
+		if err != nil {
+			return err
+		}
+		
+		// Replace existing card in place
+		_ = sse.PatchElements(htmlBuilder.String())
+		
+	case "task_moved":
+		// Load task with edges
+		t, err := s.Client.Task.Query().
+			Where(task.IDEQ(event.TaskID)).
+			WithTags().
+			WithHistory().
+			Only(ctx)
+		if err != nil {
+			return err
+		}
+		
+		// Render the task card
+		var htmlBuilder strings.Builder
+		err = fragments.TaskCard(t, t.Column).Render(ctx, &htmlBuilder)
+		if err != nil {
+			return err
+		}
+		
+		// Remove from old location and append to new column
+		_ = sse.RemoveElement("#task-card-" + strconv.Itoa(event.TaskID))
+		_ = sse.PatchElements(htmlBuilder.String(),
+			datastar.WithModeAppend(),
+			datastar.WithSelector("#column-"+t.Column))
 		
 	case "task_deleted":
 		// Remove the element
