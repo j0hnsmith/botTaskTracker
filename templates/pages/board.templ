@@ -76,27 +76,51 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 						// Parse the SSE data
 						const lines = e.data.split('\n');
 						let selector = '';
+						let mode = 'outer'; // default mode
 						let html = '';
 						
 						for (const line of lines) {
 							if (line.startsWith('selector ')) {
 								selector = line.substring(9);
+							} else if (line.startsWith('mode ')) {
+								mode = line.substring(5);
 							} else if (line.startsWith('elements ')) {
 								html = line.substring(9);
 							}
 						}
 						
+						// Handle remove mode
+						if (mode === 'remove') {
+							const element = document.querySelector(selector);
+							if (element) {
+								element.remove();
+								console.log('[Board SSE] Removed', selector);
+							}
+							return;
+						}
+						
+						// Handle patch/append modes
 						if (html) {
-							// Apply the HTML patch
 							if (selector) {
-								// Patch specific element
 								const target = document.querySelector(selector);
 								if (target) {
-									target.innerHTML = html;
-									console.log('[Board SSE] Patched', selector);
+									if (mode === 'append') {
+										// Append mode - add to end
+										const tempDiv = document.createElement('div');
+										tempDiv.innerHTML = html;
+										const newElement = tempDiv.firstElementChild;
+										if (newElement) {
+											target.appendChild(newElement);
+											console.log('[Board SSE] Appended to', selector);
+										}
+									} else {
+										// Outer mode - replace innerHTML
+										target.innerHTML = html;
+										console.log('[Board SSE] Patched', selector);
+									}
 								}
 							} else {
-								// Replace element by ID from HTML
+								// No selector - replace element by ID
 								const tempDiv = document.createElement('div');
 								tempDiv.innerHTML = html;
 								const newElement = tempDiv.firstElementChild;
@@ -114,24 +138,6 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 					}
 				});
 				
-				eventSource.addEventListener('datastar-remove-elements', (e) => {
-					console.log('[Board SSE] Received remove-elements:', e.data);
-					try {
-						const lines = e.data.split('\n');
-						for (const line of lines) {
-							if (line.startsWith('selector ')) {
-								const selector = line.substring(9);
-								const element = document.querySelector(selector);
-								if (element) {
-									element.remove();
-									console.log('[Board SSE] Removed', selector);
-								}
-							}
-						}
-					} catch (err) {
-						console.error('[Board SSE] Error removing element:', err);
-					}
-				});
 				
 				eventSource.onopen = () => {
 					console.log('[Board SSE] Connected');
