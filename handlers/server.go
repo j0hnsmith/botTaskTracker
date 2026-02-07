@@ -3,17 +3,19 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/j0hnsmith/botTaskTracker/ent"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/j0hnsmith/botTaskTracker/ent"
 	sqlite "modernc.org/sqlite"
 )
 
 type Server struct {
-	Client *ent.Client
+	Client      *ent.Client
+	Broadcaster *Broadcaster
 }
 
 func NewServer(ctx context.Context) (*Server, error) {
@@ -37,27 +39,35 @@ func NewServer(ctx context.Context) (*Server, error) {
 		return nil, err
 	}
 
-	return &Server{Client: client}, nil
+	return &Server{
+		Client:      client,
+		Broadcaster: NewBroadcaster(),
+	}, nil
 }
 
 func (s *Server) Close() error {
 	return s.Client.Close()
 }
 
-func (s *Server) Routes() *http.ServeMux {
+func (s *Server) Routes(staticFS fs.FS) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// Static assets
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	// Static assets from embedded FS
+	staticSub, _ := fs.Sub(staticFS, "static")
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 
 	// Page routes
 	mux.HandleFunc("GET /{$}", s.BoardViewHandler)
+
+	// SSE endpoint for board events
+	mux.HandleFunc("GET /datastar/board/events", s.HandleBoardEvents)
 
 	// Datastar SSE routes for tasks
 	mux.HandleFunc("GET /datastar/tasks/add-form", s.TaskAddFormHandler)
 	mux.HandleFunc("POST /datastar/tasks", s.TaskCreateHandler)
 	mux.HandleFunc("GET /datastar/tasks/edit/{id}", s.TaskEditFormHandler)
 	mux.HandleFunc("PUT /datastar/tasks/{id}", s.TaskUpdateHandler)
+	mux.HandleFunc("PATCH /datastar/tasks/{id}/column", s.TaskColumnUpdateHandler)
 	mux.HandleFunc("DELETE /datastar/tasks/{id}", s.TaskDeleteHandler)
 	mux.HandleFunc("POST /datastar/tasks/{id}/move", s.TaskMoveHandler)
 	mux.HandleFunc("POST /datastar/tasks/{id}/assign", s.TaskAssignHandler)

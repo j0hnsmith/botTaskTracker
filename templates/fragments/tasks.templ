@@ -4,67 +4,294 @@ import "github.com/j0hnsmith/botTaskTracker/ent"
 import "strconv"
 import "time"
 
-templ TaskCard(task *ent.Task) {
-	<div id={ "task-card-" + strconv.Itoa(task.ID) } class="card bg-white border shadow-sm p-3">
-		<h4 class="font-semibold text-sm">{ task.Title }</h4>
-		if task.Description != "" {
-			<p class="text-xs text-gray-600 mt-1">{ task.Description }</p>
+templ TaskCard(task *ent.Task, column string) {
+	<div 
+		id={ "task-card-" + strconv.Itoa(task.ID) } 
+		class={
+			"card bg-base-100 shadow-sm hover:shadow-md transition-shadow mb-3 task-card",
+			templ.KV("border border-base-300", column != "in_progress" && column != "done"),
+			templ.KV("border-l-4 border-l-info border-t border-r border-b border-base-300", column == "in_progress"),
+			templ.KV("opacity-70", column == "done"),
 		}
-		if len(task.Edges.Tags) > 0 {
-			<div class="flex flex-wrap gap-1 mt-2">
-				for _, tag := range task.Edges.Tags {
-					<span class="badge badge-sm badge-primary">{ tag.Key }:{ tag.Value }</span>
-				}
+	>
+		<div class="card-body p-3">
+			<div class="flex items-start justify-between">
+				<h3 class={
+					"card-title text-sm cursor-pointer hover:text-primary",
+					templ.KV("line-through text-base-content/60", column == "done"),
+				}>
+					{ task.Title }
+				</h3>
+				<!-- Dropdown menu -->
+				<div class="dropdown dropdown-end card-menu">
+					<div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+						<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+							<circle cx="8" cy="2" r="1.5"/>
+							<circle cx="8" cy="8" r="1.5"/>
+							<circle cx="8" cy="14" r="1.5"/>
+						</svg>
+					</div>
+					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+						<li>
+							<a 
+								class="text-sm"
+								data-task-id={ strconv.Itoa(task.ID) }
+								data-on:click="@get('/datastar/tasks/edit/'+el.dataset.taskId)"
+							>
+								✏️ Edit task
+							</a>
+						</li>
+						<li class="divider my-0"></li>
+						<li>
+							<a 
+								class="text-error text-sm"
+								data-task-id={ strconv.Itoa(task.ID) }
+								data-on:click="if(confirm('Delete this task?')){@delete('/datastar/tasks/'+el.dataset.taskId)}"
+							>
+								🗑️ Delete
+							</a>
+						</li>
+					</ul>
+				</div>
 			</div>
-		}
-		<div class="flex justify-between items-center mt-2">
-			<span class="text-xs">{ task.Assignee }</span>
-			<div class="flex gap-1">
-				<button
-					class="btn btn-xs btn-ghost"
-					data-task-id={ strconv.Itoa(task.ID) }
-					data-on:click="@get('/datastar/tasks/edit/'+el.dataset.taskId)"
-				>
-					Edit
-				</button>
-				<button
-					class="btn btn-xs btn-ghost text-error"
-					data-task-id={ strconv.Itoa(task.ID) }
-					data-on:click="if(confirm('Delete?')){@delete('/datastar/tasks/'+el.dataset.taskId)}"
-				>
-					×
-				</button>
-			</div>
+			<!-- Tags using daisyUI badges -->
+			if len(task.Edges.Tags) > 0 {
+				<div class="flex flex-wrap gap-1 mt-2">
+					for _, tag := range task.Edges.Tags {
+						<div class={
+							"badge badge-sm",
+							templ.KV("badge-info", tag.Value == "feature" || tag.Key == "feature"),
+							templ.KV("badge-error", tag.Value == "bug" || tag.Key == "bug" || (tag.Key == "priority" && tag.Value == "high")),
+							templ.KV("badge-warning", tag.Value == "ops" || tag.Key == "ops" || tag.Value == "critical" || tag.Key == "critical" || tag.Value == "testing" || tag.Key == "testing"),
+							templ.KV("badge-success", tag.Value == "enhancement" || tag.Key == "enhancement" || tag.Value == "complete" || tag.Key == "complete" || tag.Value == "daisyui" || tag.Key == "daisyui"),
+							templ.KV("badge-secondary", tag.Value == "auth" || tag.Key == "auth" || tag.Value == "ui" || tag.Key == "ui"),
+							templ.KV("badge-accent", tag.Value == "docs" || tag.Key == "docs" || tag.Value == "infra" || tag.Key == "infra"),
+							templ.KV("badge-neutral", (tag.Value != "feature" && tag.Key != "feature") && (tag.Value != "bug" && tag.Key != "bug") && tag.Key != "priority" && (tag.Value != "ops" && tag.Key != "ops") && (tag.Value != "critical" && tag.Key != "critical") && (tag.Value != "testing" && tag.Key != "testing") && (tag.Value != "enhancement" && tag.Key != "enhancement") && (tag.Value != "complete" && tag.Key != "complete") && (tag.Value != "auth" && tag.Key != "auth") && (tag.Value != "ui" && tag.Key != "ui") && (tag.Value != "docs" && tag.Key != "docs") && (tag.Value != "infra" && tag.Key != "infra") && (tag.Value != "daisyui" && tag.Key != "daisyui")),
+						}>
+							{ tag.Key }if tag.Value != "" {
+								:{ tag.Value }
+							}
+						</div>
+					}
+				</div>
+			}
+			<!-- Category badge - only show for recognized categories -->
+			if hasValidCategory(task) {
+				<div class={
+					"badge badge-outline gap-1 mt-2",
+					templ.KV("badge-info", getCategoryTag(task) == "docs"),
+					templ.KV("badge-error", getCategoryTag(task) == "bug"),
+					templ.KV("badge-secondary", getCategoryTag(task) == "auth" || getCategoryTag(task) == "ui"),
+					templ.KV("badge-success", getCategoryTag(task) == "enhancement" || getCategoryTag(task) == "complete" || getCategoryTag(task) == "payment"),
+					templ.KV("badge-warning", getCategoryTag(task) == "ops"),
+				}>
+					<span>{ getCategoryEmoji(getCategoryTag(task)) }</span>
+					{ getCategoryName(getCategoryTag(task)) }
+				</div>
+			}
+			<!-- Progress bar for "In Progress" column -->
+			if column == "in_progress" {
+				<progress class="progress progress-info w-full mt-2" value="65" max="100"></progress>
+			}
+			if column == "review" {
+				<progress class="progress progress-success w-full mt-2" value="85" max="100"></progress>
+			}
+			<!-- Divider before assignee info -->
+			if task.Assignee != "" || column == "in_progress" || column == "review" || column == "done" {
+				<div class="divider my-2"></div>
+			}
+			<!-- Avatar and assignee info -->
+			if task.Assignee != "" {
+				<div class="flex items-center gap-2">
+					<div class="avatar placeholder">
+						<div class={
+							"rounded-full w-6 h-6 text-xs",
+							templ.KV("bg-info text-info-content", task.Assignee == "john"),
+							templ.KV("bg-primary text-primary-content", task.Assignee == "peter"),
+							templ.KV("bg-accent text-accent-content", task.Assignee != "john" && task.Assignee != "peter"),
+						}>
+							<span>{ string([]rune(task.Assignee)[0]) }</span>
+						</div>
+					</div>
+					<div class="flex items-center gap-2 text-xs text-base-content/60">
+						<span class="font-medium">{ task.Assignee }</span>
+						<span>•</span>
+						<span>{ formatTaskTimeAgo(task.UpdatedAt) }</span>
+					</div>
+				</div>
+			}
 		</div>
 	</div>
 }
 
+func hasValidCategory(task *ent.Task) bool {
+	cat := getCategoryTag(task)
+	// Only show badge for specific recognized categories
+	return cat == "auth" || cat == "bug" || cat == "ops" || cat == "ui" || cat == "docs" || cat == "enhancement" || cat == "payment" || cat == "complete"
+}
+
+func getCategoryTag(task *ent.Task) string {
+	if task == nil || len(task.Edges.Tags) == 0 {
+		return ""
+	}
+	
+	// Priority order for category determination
+	categoryPriority := []string{"auth", "bug", "ops", "ui", "docs", "enhancement", "payment", "complete"}
+	
+	for _, priority := range categoryPriority {
+		for _, tag := range task.Edges.Tags {
+			// Check both key and value to handle different tag formats
+			if tag.Key == priority || tag.Value == priority {
+				return priority
+			}
+		}
+	}
+	
+	// Check for testing tag which maps to payments category
+	for _, tag := range task.Edges.Tags {
+		if tag.Key == "testing" || tag.Value == "testing" {
+			return "payment"
+		}
+	}
+	
+	// Check for "feature" tags
+	for _, tag := range task.Edges.Tags {
+		if tag.Key == "type" && tag.Value == "feature" {
+			return "" // Don't show category badge for generic features
+		}
+	}
+	
+	return ""
+}
+
+func getCategoryEmoji(key string) string {
+	switch key {
+	case "auth":
+		return "🔐"
+	case "bug":
+		return "🐛"
+	case "docs":
+		return "📚"
+	case "enhancement":
+		return "📊"
+	case "ops":
+		return "⚙️"
+	case "ui":
+		return "🎨"
+	case "payment":
+		return "💳"
+	case "complete":
+		return "✅"
+	default:
+		return "📋"
+	}
+}
+
+func getCategoryName(key string) string {
+	switch key {
+	case "auth":
+		return "Security"
+	case "bug":
+		return "Bugs"
+	case "docs":
+		return "Docs"
+	case "enhancement":
+		return "Core"
+	case "ops":
+		return "Ops"
+	case "ui":
+		return "UI/UX"
+	case "payment":
+		return "Payments"
+	case "complete":
+		return "Done"
+	default:
+		return "Task"
+	}
+}
+
+func formatTaskTimeAgo(t time.Time) string {
+	duration := time.Since(t)
+	if duration < time.Minute {
+		return "just now"
+	}
+	if duration < time.Hour {
+		mins := int(duration.Minutes())
+		if mins == 1 {
+			return "1m"
+		}
+		return strconv.Itoa(mins) + "m"
+	}
+	if duration < 24*time.Hour {
+		hours := int(duration.Hours())
+		if hours == 1 {
+			return "1h"
+		}
+		return strconv.Itoa(hours) + "h"
+	}
+	days := int(duration.Hours() / 24)
+	if days == 1 {
+		return "1d ago"
+	}
+	return strconv.Itoa(days) + "d ago"
+}
+
 templ TaskAddModalWithForm() {
 	<dialog id="add-task-modal" class="modal">
-		<div class="modal-box">
+		<div class="modal-box max-w-lg">
 			<form method="dialog">
 				<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
 			</form>
-			<h3 class="font-bold text-lg">Add Task</h3>
-			<form class="space-y-4 mt-4" data-on:submit="@post('/datastar/tasks')">
-				<div id="add-error" class="text-error text-sm hidden"></div>
-				<input type="text" name="title" data-bind:title placeholder="Title" class="input input-bordered w-full" required/>
-				<textarea name="description" data-bind:description placeholder="Description" class="textarea textarea-bordered w-full"></textarea>
-				<select name="column" data-bind:column class="select select-bordered w-full">
-					<option value="backlog">Backlog</option>
-					<option value="in_progress">In Progress</option>
-					<option value="review">Review</option>
-					<option value="done">Done</option>
-				</select>
-				<select name="assignee" data-bind:assignee class="select select-bordered w-full">
-					<option value="">Unassigned</option>
-					<option value="peter">peter</option>
-					<option value="john">john</option>
-				</select>
-				<input type="text" name="tags" data-bind:tags placeholder="Tags: key:value, key:value" class="input input-bordered w-full"/>
-				<div class="modal-action">
-					<button type="button" class="btn" data-on:click="document.getElementById('add-task-modal').close()">Cancel</button>
-					<button type="submit" class="btn btn-primary">Add</button>
+			<h3 class="font-bold text-xl mb-4">➕ Add New Task</h3>
+			<form class="space-y-4" data-on:submit="@post('/datastar/tasks')">
+				<div id="add-error" class="alert alert-error text-sm hidden"></div>
+				<div class="form-control">
+					<label class="label">
+						<span class="label-text font-medium">Title</span>
+					</label>
+					<input type="text" name="title" data-bind:title placeholder="Enter task title" class="input input-bordered w-full" required/>
+				</div>
+				<div class="form-control">
+					<label class="label">
+						<span class="label-text font-medium">Description</span>
+					</label>
+					<textarea name="description" data-bind:description placeholder="Enter task description" class="textarea textarea-bordered w-full h-24"></textarea>
+				</div>
+				<div class="grid grid-cols-2 gap-4">
+					<div class="form-control">
+						<label class="label">
+							<span class="label-text font-medium">Column</span>
+						</label>
+						<select name="column" data-bind:column class="select select-bordered w-full">
+							<option value="backlog">Backlog</option>
+							<option value="in_progress">In Progress</option>
+							<option value="review">Review</option>
+							<option value="done">Done</option>
+						</select>
+					</div>
+					<div class="form-control">
+						<label class="label">
+							<span class="label-text font-medium">Assignee</span>
+						</label>
+						<select name="assignee" data-bind:assignee class="select select-bordered w-full">
+							<option value="">Unassigned</option>
+							<option value="peter">peter</option>
+							<option value="john">john</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-control">
+					<label class="label">
+						<span class="label-text font-medium">Tags</span>
+					</label>
+					<input type="text" name="tags" data-bind:tags placeholder="key:value, key:value" class="input input-bordered w-full"/>
+					<label class="label">
+						<span class="label-text-alt">Separate tags with commas</span>
+					</label>
+				</div>
+				<div class="modal-action pt-4 border-t">
+					<button type="button" class="btn btn-ghost" data-on:click="document.getElementById('add-task-modal').close()">Cancel</button>
+					<button type="submit" class="btn btn-primary">Create Task</button>
 				</div>
 			</form>
 		</div>
@@ -73,43 +300,77 @@ templ TaskAddModalWithForm() {
 
 templ TaskEditModalWithForm(task *ent.Task) {
 	<dialog id="edit-task-modal" class="modal">
-		<div class="modal-box">
+		<div class="modal-box max-w-lg">
 			<form method="dialog">
 				<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
 			</form>
-			<h3 class="font-bold text-lg">Edit Task</h3>
-			<form class="space-y-4 mt-4" data-on:submit={ "@put('/datastar/tasks/"+strconv.Itoa(task.ID)+"')" }>
-				<div id="edit-error" class="text-error text-sm hidden"></div>
-				<input type="text" name="title" data-bind:title value={ task.Title } class="input input-bordered w-full" required/>
-				<textarea name="description" data-bind:description class="textarea textarea-bordered w-full">{ task.Description }</textarea>
-				<select name="column" data-bind:column class="select select-bordered w-full">
-					<option value="backlog" selected?={ task.Column=="backlog" }>Backlog</option>
-					<option value="in_progress" selected?={ task.Column=="in_progress" }>In Progress</option>
-					<option value="review" selected?={ task.Column=="review" }>Review</option>
-					<option value="done" selected?={ task.Column=="done" }>Done</option>
-				</select>
-				<select name="assignee" data-bind:assignee class="select select-bordered w-full">
-					<option value="" selected?={ task.Assignee=="" }>Unassigned</option>
-					<option value="peter" selected?={ task.Assignee=="peter" }>peter</option>
-					<option value="john" selected?={ task.Assignee=="john" }>john</option>
-				</select>
-				<input type="text" name="tags" data-bind:tags placeholder="Tags" class="input input-bordered w-full"/>
+			<h3 class="font-bold text-xl mb-4">✏️ Edit Task</h3>
+			<form class="space-y-4" data-on:submit={ "@put('/datastar/tasks/"+strconv.Itoa(task.ID)+"')" }>
+				<div id="edit-error" class="alert alert-error text-sm hidden"></div>
+				<div class="form-control">
+					<label class="label">
+						<span class="label-text font-medium">Title</span>
+					</label>
+					<input type="text" name="title" data-bind:title value={ task.Title } class="input input-bordered w-full" required/>
+				</div>
+				<div class="form-control">
+					<label class="label">
+						<span class="label-text font-medium">Description</span>
+					</label>
+					<textarea name="description" data-bind:description class="textarea textarea-bordered w-full h-24">{ task.Description }</textarea>
+				</div>
+				<div class="grid grid-cols-2 gap-4">
+					<div class="form-control">
+						<label class="label">
+							<span class="label-text font-medium">Column</span>
+						</label>
+						<select name="column" data-bind:column class="select select-bordered w-full">
+							<option value="backlog" selected?={ task.Column=="backlog" }>Backlog</option>
+							<option value="in_progress" selected?={ task.Column=="in_progress" }>In Progress</option>
+							<option value="review" selected?={ task.Column=="review" }>Review</option>
+							<option value="done" selected?={ task.Column=="done" }>Done</option>
+						</select>
+					</div>
+					<div class="form-control">
+						<label class="label">
+							<span class="label-text font-medium">Assignee</span>
+						</label>
+						<select name="assignee" data-bind:assignee class="select select-bordered w-full">
+							<option value="" selected?={ task.Assignee=="" }>Unassigned</option>
+							<option value="peter" selected?={ task.Assignee=="peter" }>peter</option>
+							<option value="john" selected?={ task.Assignee=="john" }>john</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-control">
+					<label class="label">
+						<span class="label-text font-medium">Tags</span>
+					</label>
+					<input type="text" name="tags" data-bind:tags placeholder="key:value, key:value" class="input input-bordered w-full"/>
+					<label class="label">
+						<span class="label-text-alt">Separate tags with commas</span>
+					</label>
+				</div>
 				if len(task.Edges.History) > 0 {
-					<div class="collapse collapse-arrow border">
+					<div class="collapse collapse-arrow border border-base-300 bg-base-200">
 						<input type="checkbox"/>
-						<div class="collapse-title text-sm">History</div>
+						<div class="collapse-title text-sm font-medium">📜 Task History</div>
 						<div class="collapse-content">
-							<div class="text-xs space-y-1">
+							<div class="text-xs space-y-2">
 								for _, h := range task.Edges.History {
-									<div>{ h.Action }: { h.Details } ({ formatTime(h.CreatedAt) })</div>
+									<div class="flex items-start gap-2 p-2 bg-base-100 rounded">
+										<span class="font-semibold">{ h.Action }:</span>
+										<span class="text-base-content/70">{ h.Details }</span>
+										<span class="ml-auto text-base-content/50">{ formatTime(h.CreatedAt) }</span>
+									</div>
 								}
 							</div>
 						</div>
 					</div>
 				}
-				<div class="modal-action">
-					<button type="button" class="btn" data-on:click="document.getElementById('edit-task-modal').close()">Cancel</button>
-					<button type="submit" class="btn btn-primary">Save</button>
+				<div class="modal-action pt-4 border-t">
+					<button type="button" class="btn btn-ghost" data-on:click="document.getElementById('edit-task-modal').close()">Cancel</button>
+					<button type="submit" class="btn btn-primary">Save Changes</button>
 				</div>
 			</form>
 		</div>

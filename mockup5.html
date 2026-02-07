@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="corporate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>botTaskTracker - Mockup v5 (Max daisyUI)</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss/browser@4"></script>
+  <style>
+    .swimlane {
+      background: #f6f8fa;
+      border: 1px solid #d1d9e0;
+      border-radius: 8px;
+    }
+    .swimlane-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #d1d9e0;
+      background: white;
+      border-radius: 8px 8px 0 0;
+    }
+    .swimlane-content {
+      padding: 8px;
+      min-height: 300px;
+    }
+    .task-card:hover .card-menu {
+      opacity: 1;
+    }
+    .card-menu {
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+  </style>
+</head>
+<body class="bg-base-200 min-h-screen">
+  
+  <!-- Header with breadcrumbs -->
+  <div class="navbar bg-base-100 border-b border-base-300">
+    <div class="flex-1">
+      <div class="breadcrumbs text-sm">
+        <ul>
+          <li><a class="link link-hover">🤖 botTaskTracker</a></li>
+          <li>Board</li>
+        </ul>
+      </div>
+    </div>
+    <div class="flex-none gap-2">
+      <!-- Stats badge -->
+      <div class="stats stats-horizontal shadow-sm bg-base-100">
+        <div class="stat p-3">
+          <div class="stat-title text-xs">Tasks</div>
+          <div class="stat-value text-lg">10</div>
+        </div>
+        <div class="stat p-3">
+          <div class="stat-title text-xs">In Progress</div>
+          <div class="stat-value text-lg text-warning">2</div>
+        </div>
+      </div>
+      
+      <!-- Filter dropdown -->
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+          Filter
+        </div>
+        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow-lg border border-base-300">
+          <li><a><div class="avatar placeholder w-6 h-6"><div class="bg-primary text-primary-content rounded-full w-6 h-6 text-xs">P</div></div> Peter</a></li>
+          <li><a><div class="avatar placeholder w-6 h-6"><div class="bg-info text-info-content rounded-full w-6 h-6 text-xs">J</div></div> John</a></li>
+          <li><a><div class="avatar placeholder w-6 h-6"><div class="bg-accent text-accent-content rounded-full w-6 h-6 text-xs">J</div></div> Jane</a></li>
+          <li class="divider my-0"></li>
+          <li><a>All assignees</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div class="p-6 flex gap-4 overflow-x-auto">
+    
+    <!-- Backlog Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <div class="indicator">
+          <span class="indicator-item badge badge-neutral badge-xs"></span>
+          <div class="w-4 h-4 rounded-full border-2 border-base-300"></div>
+        </div>
+        <span class="font-semibold">Backlog</span>
+        <span class="badge badge-ghost badge-sm">4</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 - Using daisyUI card component -->
+        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border border-base-300 mb-3 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer hover:text-primary">Add user authentication</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <!-- Tags using daisyUI badges -->
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-info badge-sm">feature</div>
+              <div class="badge badge-secondary badge-sm">auth</div>
+              <div class="badge badge-error badge-sm">priority:high</div>
+            </div>
+            
+            <!-- Category badge -->
+            <div class="badge badge-secondary badge-outline gap-1 mt-2">
+              <span>🔐</span> Security
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border border-base-300 mb-3 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer hover:text-primary">Task history tracking with audit log</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-info badge-sm">feature</div>
+              <div class="badge badge-success badge-sm">enhancement</div>
+            </div>
+            
+            <div class="badge badge-success badge-outline gap-1 mt-2">
+              <span>📊</span> Core
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 3 -->
+        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border border-base-300 mb-3 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer hover:text-primary">Fix database migrations</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-error badge-sm">bug</div>
+              <div class="badge badge-warning badge-sm">critical</div>
+            </div>
+            
+            <div class="badge badge-error badge-outline gap-1 mt-2">
+              <span>🐛</span> Bugs
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 4 -->
+        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border border-base-300 mb-3 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer hover:text-primary">Write API documentation</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-accent badge-sm">docs</div>
+              <div class="badge badge-neutral badge-sm">low priority</div>
+            </div>
+            
+            <div class="badge badge-info badge-outline gap-1 mt-2">
+              <span>📚</span> Docs
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <!-- In Progress Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <div class="indicator">
+          <span class="indicator-item badge badge-warning badge-xs"></span>
+          <div class="w-4 h-4 rounded-full bg-warning/20 border-2 border-warning"></div>
+        </div>
+        <span class="font-semibold">In Progress</span>
+        <span class="badge badge-ghost badge-sm">2</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 with progress -->
+        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-info border-t border-r border-b border-base-300 mb-3 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer hover:text-primary">Build kanban UI with swimlanes</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-info badge-sm">feature</div>
+              <div class="badge badge-secondary badge-sm">ui</div>
+              <div class="badge badge-success badge-sm">daisyui</div>
+            </div>
+            
+            <div class="badge badge-secondary badge-outline gap-1 mt-2">
+              <span>🎨</span> UI/UX
+            </div>
+            
+            <!-- Progress bar -->
+            <progress class="progress progress-info w-full mt-2" value="65" max="100"></progress>
+            
+            <div class="divider my-2"></div>
+            
+            <!-- Avatar and time with daisyUI components -->
+            <div class="flex items-center gap-2">
+              <div class="avatar placeholder">
+                <div class="bg-info text-info-content rounded-full w-6 h-6 text-xs">
+                  <span>J</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-base-content/60">
+                <span class="font-medium">john</span>
+                <span>•</span>
+                <span>30m</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-info border-t border-r border-b border-base-300 mb-3 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer hover:text-primary">Deploy staging environment</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-warning badge-sm">ops</div>
+              <div class="badge badge-accent badge-sm">infra</div>
+            </div>
+            
+            <div class="badge badge-warning badge-outline gap-1 mt-2">
+              <span>⚙️</span> Ops
+            </div>
+            
+            <progress class="progress progress-warning w-full mt-2" value="40" max="100"></progress>
+            
+            <div class="divider my-2"></div>
+            
+            <div class="flex items-center gap-2">
+              <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-6 h-6 text-xs">
+                  <span>P</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-base-content/60">
+                <span class="font-medium">peter</span>
+                <span>•</span>
+                <span>1h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <!-- Review Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <div class="indicator">
+          <span class="indicator-item badge badge-secondary badge-xs"></span>
+          <div class="w-4 h-4 rounded-full bg-secondary/20 border-2 border-secondary"></div>
+        </div>
+        <span class="font-semibold">Review</span>
+        <span class="badge badge-ghost badge-sm">1</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 -->
+        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border border-base-300 mb-3 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer hover:text-primary">Test payment flow with Stripe</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-info badge-sm">feature</div>
+              <div class="badge badge-warning badge-sm">testing</div>
+            </div>
+            
+            <div class="badge badge-success badge-outline gap-1 mt-2">
+              <span>💳</span> Payments
+            </div>
+            
+            <progress class="progress progress-success w-full mt-2" value="85" max="100"></progress>
+            
+            <div class="divider my-2"></div>
+            
+            <div class="flex items-center gap-2">
+              <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-6 h-6 text-xs">
+                  <span>P</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-base-content/60">
+                <span class="font-medium">peter</span>
+                <span>•</span>
+                <span>2h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <!-- Done Column -->
+    <div class="swimlane min-w-[320px] flex-shrink-0">
+      <div class="swimlane-header flex items-center gap-2">
+        <div class="indicator">
+          <span class="indicator-item badge badge-success badge-xs"></span>
+          <div class="w-4 h-4 rounded-full bg-success"></div>
+        </div>
+        <span class="font-semibold">Done</span>
+        <span class="badge badge-ghost badge-sm">3</span>
+      </div>
+      <div class="swimlane-content">
+        
+        <!-- Card 1 -->
+        <div class="card bg-base-100 shadow-sm border border-base-300 mb-3 opacity-70 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer line-through text-base-content/60">Setup project structure</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-success badge-sm">complete</div>
+            </div>
+            
+            <div class="divider my-2"></div>
+            
+            <div class="flex items-center gap-2">
+              <div class="avatar placeholder">
+                <div class="bg-info text-info-content rounded-full w-6 h-6 text-xs">
+                  <span>J</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-base-content/60">
+                <span class="font-medium">john</span>
+                <span>•</span>
+                <span>3h ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Card 2 -->
+        <div class="card bg-base-100 shadow-sm border border-base-300 mb-3 opacity-70 task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm cursor-pointer line-through text-base-content/60">Configure CI/CD pipeline</h3>
+              <div class="dropdown dropdown-end card-menu">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/></svg>
+                </div>
+                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-44 p-2 shadow-lg border border-base-300">
+                  <li><a class="text-sm">✏️ Edit tags</a></li>
+                  <li><a class="text-sm">👤 Change assignee</a></li>
+                  <li><a class="text-sm">📋 Move to...</a></li>
+                  <li class="divider my-0"></li>
+                  <li><a class="text-error text-sm">🗑️ Delete</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-1 mt-2">
+              <div class="badge badge-success badge-sm">complete</div>
+              <div class="badge badge-warning badge-sm">ops</div>
+            </div>
+            
+            <div class="divider my-2"></div>
+            
+            <div class="flex items-center gap-2">
+              <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-6 h-6 text-xs">
+                  <span>P</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-base-content/60">
+                <span class="font-medium">peter</span>
+                <span>•</span>
+                <span>1d ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- Activity Stream with Timeline component -->
+  <div class="px-6 pb-6">
+    <div class="card bg-base-100 border border-base-300">
+      <div class="card-body p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="card-title text-base">📋 Activity Stream</h3>
+          <span class="badge badge-ghost badge-sm">Last 24 hours</span>
+        </div>
+        
+        <!-- Timeline -->
+        <ul class="timeline timeline-vertical timeline-compact">
+          <li>
+            <div class="timeline-start text-xs text-base-content/60">30m ago</div>
+            <div class="timeline-middle">
+              <div class="avatar placeholder">
+                <div class="bg-info text-info-content rounded-full w-5 h-5 text-[10px]">
+                  <span>J</span>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-end timeline-box text-sm">
+              <span class="font-medium">john</span> moved 
+              <span class="font-medium">"Build kanban UI"</span> to 
+              <span class="badge badge-warning badge-xs">In Progress</span>
+            </div>
+            <hr class="bg-info"/>
+          </li>
+          <li>
+            <hr class="bg-primary"/>
+            <div class="timeline-start text-xs text-base-content/60">1h ago</div>
+            <div class="timeline-middle">
+              <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-5 h-5 text-[10px]">
+                  <span>P</span>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-end timeline-box text-sm">
+              <span class="font-medium">peter</span> started working on 
+              <span class="font-medium">"Deploy staging environment"</span>
+            </div>
+            <hr class="bg-success"/>
+          </li>
+          <li>
+            <hr class="bg-success"/>
+            <div class="timeline-start text-xs text-base-content/60">3h ago</div>
+            <div class="timeline-middle">
+              <div class="avatar placeholder">
+                <div class="bg-info text-info-content rounded-full w-5 h-5 text-[10px]">
+                  <span>J</span>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-end timeline-box text-sm">
+              <span class="font-medium">john</span> completed 
+              <span class="font-medium">"Setup project structure"</span>
+            </div>
+            <hr class="bg-secondary"/>
+          </li>
+          <li>
+            <hr class="bg-secondary"/>
+            <div class="timeline-start text-xs text-base-content/60">4h ago</div>
+            <div class="timeline-middle">
+              <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-5 h-5 text-[10px]">
+                  <span>P</span>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-end timeline-box text-sm">
+              <span class="font-medium">peter</span> added tag 
+              <span class="badge badge-warning badge-xs">testing</span> to 
+              <span class="font-medium">"Test payment flow"</span>
+            </div>
+            <hr class="bg-info"/>
+          </li>
+          <li>
+            <hr class="bg-info"/>
+            <div class="timeline-start text-xs text-base-content/60">5h ago</div>
+            <div class="timeline-middle">
+              <div class="avatar placeholder">
+                <div class="bg-info text-info-content rounded-full w-5 h-5 text-[10px]">
+                  <span>J</span>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-end timeline-box text-sm">
+              <span class="font-medium">john</span> created task 
+              <span class="font-medium">"Add user authentication"</span>
+            </div>
+            <hr class="bg-primary"/>
+          </li>
+          <li>
+            <hr class="bg-primary"/>
+            <div class="timeline-start text-xs text-base-content/60">1d ago</div>
+            <div class="timeline-middle">
+              <div class="avatar placeholder">
+                <div class="bg-primary text-primary-content rounded-full w-5 h-5 text-[10px]">
+                  <span>P</span>
+                </div>
+              </div>
+            </div>
+            <div class="timeline-end timeline-box text-sm">
+              <span class="font-medium">peter</span> moved 
+              <span class="font-medium">"Configure CI/CD"</span> to 
+              <span class="badge badge-success badge-xs">Done</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

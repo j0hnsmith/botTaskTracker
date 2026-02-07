@@ -202,12 +202,19 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Render task card
 	var htmlBuilder strings.Builder
-	err = fragments.TaskCard(newTask).Render(ctx, &htmlBuilder)
+	err = fragments.TaskCard(newTask, column).Render(ctx, &htmlBuilder)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to render task card", "error", err)
 		_ = sse.ConsoleError(err)
 		return
 	}
+
+	// Broadcast event to other clients
+	s.Broadcaster.Broadcast(BoardEvent{
+		Type:   "task_created",
+		TaskID: newTask.ID,
+		Column: column,
+	})
 
 	// Clear error, append card to column, close modal
 	_ = sse.PatchElements(`<div id="add-error" class="text-error text-sm hidden"></div>`)
@@ -364,11 +371,18 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Render updated card
 	var htmlBuilder strings.Builder
-	err = fragments.TaskCard(updatedTask).Render(ctx, &htmlBuilder)
+	err = fragments.TaskCard(updatedTask, updatedTask.Column).Render(ctx, &htmlBuilder)
 	if err != nil {
 		_ = sse.ConsoleError(err)
 		return
 	}
+
+	// Broadcast event to other clients
+	s.Broadcaster.Broadcast(BoardEvent{
+		Type:   "task_updated",
+		TaskID: updatedTask.ID,
+		Column: updatedTask.Column,
+	})
 
 	_ = sse.PatchElements(`<div id="edit-error" class="text-error text-sm hidden"></div>`)
 	_ = sse.PatchElements(htmlBuilder.String())
@@ -396,13 +410,116 @@ func (s *Server) TaskDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Broadcast event to other clients
+	s.Broadcaster.Broadcast(BoardEvent{
+		Type:   "task_deleted",
+		TaskID: id,
+	})
+
 	_ = sse.RemoveElement("#task-card-" + strconv.Itoa(id))
 }
 
+// TaskColumnUpdateHandler updates a task's column via drag-and-drop PATCH request.
+func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Read column from request body
+	type ColumnUpdate struct {
+		Column string `json:"column"`
+	}
+	var update ColumnUpdate
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Create SSE response
+	sse := datastar.NewSSE(w, r)
+
+	// Get existing task
+	existingTask, err := s.Client.Task.Query().
+		Where(task.IDEQ(id)).
+		WithTags().
+		WithHistory().
+		Only(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to find task for column update", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	oldColumn := existingTask.Column
+	newColumn := sanitizeColumn(update.Column)
+
+	// Update task column
+	updatedTask, err := s.Client.Task.UpdateOneID(id).
+		SetColumn(newColumn).
+		Save(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to update task column", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	// Create history entry
+	details := fmt.Sprintf("moved from %s to %s", oldColumn, newColumn)
+	_, err = s.Client.TaskHistory.Create().
+		SetTaskID(updatedTask.ID).
+		SetAction("moved").
+		SetDetails(details).
+		SetActor(updatedTask.Assignee).
+		Save(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to create history for column update", "error", err)
+	}
+
+	// Reload task with edges
+	updatedTask, err = s.Client.Task.Query().
+		Where(task.IDEQ(updatedTask.ID)).
+		WithTags().
+		WithHistory().
+		Only(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to reload task", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	// Render updated card
+	var htmlBuilder strings.Builder
+	err = fragments.TaskCard(updatedTask, newColumn).Render(ctx, &htmlBuilder)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to render task card", "error", err)
+		_ = sse.ConsoleError(err)
+		return
+	}
+
+	// Broadcast event to other clients
+	s.Broadcaster.Broadcast(BoardEvent{
+		Type:   "task_moved",
+		TaskID: updatedTask.ID,
+		Column: newColumn,
+	})
+
+	// Replace the task card in the DOM
+	_ = sse.PatchElements(htmlBuilder.String())
+
+	slog.InfoContext(ctx, "task column updated via drag-drop", 
+		"task_id", id, 
+		"from", oldColumn, 
+		"to", newColumn)
+}
+
 // Stub handlers for move, assign, tag operations
-func (s *Server) TaskMoveHandler(w http.ResponseWriter, r *http.Request) {}
-func (s *Server) TaskAssignHandler(w http.ResponseWriter, r *http.Request) {}
-func (s *Server) TaskAddTagHandler(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) TaskMoveHandler(w http.ResponseWriter, r *http.Request)      {}
+func (s *Server) TaskAssignHandler(w http.ResponseWriter, r *http.Request)    {}
+func (s *Server) TaskAddTagHandler(w http.ResponseWriter, r *http.Request)    {}
 func (s *Server) TaskRemoveTagHandler(w http.ResponseWriter, r *http.Request) {}
 
 // Helper functions
@@ -417,14 +534,25 @@ func sanitizeColumn(value string) string {
 }
 
 func getNextPosition(ctx context.Context, client *ent.Client, column string) (int, error) {
+	// Count tasks in column first
+	count, err := client.Task.Query().
+		Where(task.ColumnEQ(column)).
+		Count(ctx)
+	if err != nil {
+		return 0, err
+	}
+	
+	// If no tasks, start at 0
+	if count == 0 {
+		return 0, nil
+	}
+	
+	// Get max position
 	max, err := client.Task.Query().
 		Where(task.ColumnEQ(column)).
 		Aggregate(ent.Max(task.FieldPosition)).
 		Int(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return 0, nil
-		}
 		return 0, err
 	}
 	return max + 1, nil

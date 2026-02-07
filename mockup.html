@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="corporate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>botTaskTracker - Mockup</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    .swimlane {
+      min-height: 120px;
+    }
+    .task-card {
+      min-width: 280px;
+      max-width: 320px;
+    }
+  </style>
+</head>
+<body class="bg-base-200 min-h-screen p-6">
+  
+  <!-- Header -->
+  <div class="navbar bg-base-100 rounded-box shadow-sm mb-6">
+    <div class="flex-1">
+      <span class="text-xl font-bold px-4">🤖 botTaskTracker</span>
+    </div>
+    <div class="flex-none gap-2">
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-sm">
+          <span class="badge badge-primary badge-sm">john</span>
+          Filter by assignee ▾
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column Headers -->
+  <div class="flex gap-4 mb-2 px-2">
+    <div class="w-24 shrink-0"></div>
+    <div class="flex-1 min-w-[300px] font-semibold text-sm text-base-content/70 flex items-center gap-2">
+      <span class="badge badge-ghost badge-sm">4</span> Backlog
+    </div>
+    <div class="flex-1 min-w-[300px] font-semibold text-sm text-base-content/70 flex items-center gap-2">
+      <span class="badge badge-ghost badge-sm">2</span> In Progress
+    </div>
+    <div class="flex-1 min-w-[300px] font-semibold text-sm text-base-content/70 flex items-center gap-2">
+      <span class="badge badge-ghost badge-sm">1</span> Review
+    </div>
+    <div class="flex-1 min-w-[300px] font-semibold text-sm text-base-content/70 flex items-center gap-2">
+      <span class="badge badge-ghost badge-sm">3</span> Done
+    </div>
+  </div>
+
+  <!-- Swimlane: John -->
+  <div class="bg-base-100 rounded-box shadow-sm mb-4 p-4">
+    <div class="flex gap-4 items-start">
+      <!-- Swimlane Label -->
+      <div class="w-24 shrink-0 flex flex-col items-center pt-2">
+        <div class="avatar placeholder">
+          <div class="bg-primary text-primary-content w-10 rounded-full">
+            <span class="text-sm">J</span>
+          </div>
+        </div>
+        <span class="text-xs font-medium mt-1">john</span>
+      </div>
+      
+      <!-- Backlog -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card">
+          <div class="card-body p-3">
+            <div class="flex items-start justify-between">
+              <h3 class="card-title text-sm">Add user authentication</h3>
+            </div>
+            <p class="text-xs text-base-content/60 line-clamp-2">Implement OAuth2 login flow with GitHub provider</p>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-outline">feature</span>
+              <span class="badge badge-sm badge-primary badge-outline">priority:high</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Created 2h ago</div>
+          </div>
+        </div>
+        <div class="card bg-base-200 shadow-sm task-card">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm">Fix database migrations</h3>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-error badge-outline">bug</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Created 1d ago</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- In Progress -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card border-l-4 border-primary">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm">Build kanban UI</h3>
+            <p class="text-xs text-base-content/60 line-clamp-2">Create swimlane layout with daisyUI components</p>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-outline">feature</span>
+              <span class="badge badge-sm badge-secondary badge-outline">ui</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Started 30m ago</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Review -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="h-16 border-2 border-dashed border-base-300 rounded-lg flex items-center justify-center text-base-content/30 text-sm">
+          No tasks
+        </div>
+      </div>
+      
+      <!-- Done -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card opacity-60">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm line-through">Setup project structure</h3>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-success">✓ complete</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Completed 3h ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Swimlane: Peter -->
+  <div class="bg-base-100 rounded-box shadow-sm mb-4 p-4">
+    <div class="flex gap-4 items-start">
+      <!-- Swimlane Label -->
+      <div class="w-24 shrink-0 flex flex-col items-center pt-2">
+        <div class="avatar placeholder">
+          <div class="bg-secondary text-secondary-content w-10 rounded-full">
+            <span class="text-sm">P</span>
+          </div>
+        </div>
+        <span class="text-xs font-medium mt-1">peter</span>
+      </div>
+      
+      <!-- Backlog -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm">Review PR #42</h3>
+            <p class="text-xs text-base-content/60">Code review for auth feature</p>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-warning badge-outline">review</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Created 4h ago</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- In Progress -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card border-l-4 border-secondary">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm">Deploy to staging</h3>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-outline">ops</span>
+              <span class="badge badge-sm badge-info badge-outline">infra</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Started 1h ago</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Review -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card border-l-4 border-warning">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm">Test payment flow</h3>
+            <p class="text-xs text-base-content/60">Verify Stripe integration works in staging</p>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-outline">testing</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">In review 2h</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Done -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card opacity-60">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm line-through">Configure CI/CD</h3>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-success">✓ complete</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Completed 1d ago</div>
+          </div>
+        </div>
+        <div class="card bg-base-200 shadow-sm task-card opacity-60">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm line-through">Setup monitoring</h3>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-success">✓ complete</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Completed 2d ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Swimlane: Unassigned -->
+  <div class="bg-base-100 rounded-box shadow-sm mb-4 p-4 opacity-80">
+    <div class="flex gap-4 items-start">
+      <!-- Swimlane Label -->
+      <div class="w-24 shrink-0 flex flex-col items-center pt-2">
+        <div class="avatar placeholder">
+          <div class="bg-base-300 text-base-content/50 w-10 rounded-full">
+            <span class="text-sm">?</span>
+          </div>
+        </div>
+        <span class="text-xs font-medium mt-1 text-base-content/50">unassigned</span>
+      </div>
+      
+      <!-- Backlog -->
+      <div class="flex-1 min-w-[300px] flex flex-col gap-2">
+        <div class="card bg-base-200 shadow-sm task-card">
+          <div class="card-body p-3">
+            <h3 class="card-title text-sm">Write documentation</h3>
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span class="badge badge-sm badge-outline">docs</span>
+              <span class="badge badge-sm badge-ghost">low priority</span>
+            </div>
+            <div class="text-xs text-base-content/50 mt-2">Created 3d ago</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- In Progress -->
+      <div class="flex-1 min-w-[300px]">
+        <div class="h-16 border-2 border-dashed border-base-300 rounded-lg flex items-center justify-center text-base-content/30 text-sm">
+          No tasks
+        </div>
+      </div>
+      
+      <!-- Review -->
+      <div class="flex-1 min-w-[300px]">
+        <div class="h-16 border-2 border-dashed border-base-300 rounded-lg flex items-center justify-center text-base-content/30 text-sm">
+          No tasks
+        </div>
+      </div>
+      
+      <!-- Done -->
+      <div class="flex-1 min-w-[300px]">
+        <div class="h-16 border-2 border-dashed border-base-300 rounded-lg flex items-center justify-center text-base-content/30 text-sm">
+          No tasks
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Feed (collapsed) -->
+  <div class="collapse collapse-arrow bg-base-100 rounded-box shadow-sm">
+    <input type="checkbox" />
+    <div class="collapse-title font-medium">
+      📋 Recent Activity
+    </div>
+    <div class="collapse-content">
+      <div class="text-sm space-y-2">
+        <div class="flex gap-2 items-center text-base-content/70">
+          <span class="badge badge-xs badge-primary">john</span>
+          <span>moved "Build kanban UI" to In Progress</span>
+          <span class="text-xs text-base-content/50">30m ago</span>
+        </div>
+        <div class="flex gap-2 items-center text-base-content/70">
+          <span class="badge badge-xs badge-secondary">peter</span>
+          <span>completed "Setup project structure"</span>
+          <span class="text-xs text-base-content/50">3h ago</span>
+        </div>
+        <div class="flex gap-2 items-center text-base-content/70">
+          <span class="badge badge-xs badge-primary">john</span>
+          <span>created "Add user authentication"</span>
+          <span class="text-xs text-base-content/50">2h ago</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

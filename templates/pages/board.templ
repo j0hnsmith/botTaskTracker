@@ -2,6 +2,7 @@ package pages
 
 import "github.com/j0hnsmith/botTaskTracker/ent"
 import "github.com/j0hnsmith/botTaskTracker/templates/fragments"
+import "strconv"
 
 templ BoardMetaTags() {
 	<meta name="keywords" content="bot task tracker, kanban board"/>
@@ -9,58 +10,296 @@ templ BoardMetaTags() {
 }
 
 templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []string, selectedAssignee string) {
-	<div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-		<div class="lg:col-span-3">
-			@BoardHeader(assignees, selectedAssignee)
-			@BoardColumns(tasks)
-		</div>
-		<div class="lg:col-span-1">
-			@fragments.ActivityFeed(activity)
-		</div>
-	</div>
-}
-
-templ BoardHeader(assignees []string, selectedAssignee string) {
-	<div class="card bg-base-100 shadow-xl mb-4">
-		<div class="card-body">
-			<div class="flex justify-between items-center">
-				<h2 class="card-title">Task Board</h2>
-				<div class="flex gap-2">
-					<select class="select select-bordered select-sm" onchange="window.location.href='/?assignee='+this.value">
-						<option value="all" selected?={ selectedAssignee=="" || selectedAssignee=="all" }>All</option>
-						for _, assignee := range assignees {
-							<option value={ assignee } selected?={ selectedAssignee==assignee }>{ assignee }</option>
+	<style>
+		.swimlane {
+			background: #f6f8fa;
+			border: 1px solid #d1d9e0;
+			border-radius: 8px;
+		}
+		.swimlane-header {
+			padding: 12px 16px;
+			border-bottom: 1px solid #d1d9e0;
+			background: white;
+			border-radius: 8px 8px 0 0;
+		}
+		.swimlane-content {
+			padding: 8px;
+			min-height: 300px;
+		}
+		.task-card:hover .card-menu {
+			opacity: 1;
+		}
+		.card-menu {
+			opacity: 0;
+			transition: opacity 0.15s;
+		}
+		
+		/* Drag-and-drop styles */
+		.sortable-ghost {
+			opacity: 0.4;
+			background: #f0f0f0;
+		}
+		.sortable-drag {
+			opacity: 0.5;
+			cursor: grabbing !important;
+		}
+		.sortable-chosen {
+			cursor: grabbing !important;
+		}
+		.swimlane-content.drag-over {
+			background: #e3f2fd;
+			border: 2px dashed #2196f3;
+		}
+	</style>
+	<!-- Drag-and-drop libraries -->
+	<script src="/static/scripts/sortable.min.js"></script>
+	<!-- Real-time board updates via SSE -->
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			let eventSource = null;
+			let reconnectTimer = null;
+			
+			function connectSSE() {
+				if (eventSource) return;
+				
+				console.log('[Board SSE] Connecting...');
+				eventSource = new EventSource('/datastar/board/events');
+				
+				eventSource.addEventListener('datastar-patch-signals', (e) => {
+					console.log('[Board SSE] Received patch-signals:', e.data);
+					// Parse and apply signal updates if needed
+				});
+				
+				eventSource.addEventListener('datastar-patch-elements', (e) => {
+					console.log('[Board SSE] Received patch-elements');
+					try {
+						// Parse the SSE data
+						const lines = e.data.split('\n');
+						let selector = '';
+						let mode = 'outer'; // default mode
+						let html = '';
+						
+						for (const line of lines) {
+							if (line.startsWith('selector ')) {
+								selector = line.substring(9);
+							} else if (line.startsWith('mode ')) {
+								mode = line.substring(5);
+							} else if (line.startsWith('elements ')) {
+								html = line.substring(9);
+							}
 						}
-					</select>
-					<button class="btn btn-primary btn-sm" data-on:click="@get('/datastar/tasks/add-form')">
-						Add Task
-					</button>
-				</div>
-			</div>
-		</div>
-	</div>
-}
-
-templ BoardColumns(tasks []*ent.Task) {
-	<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-		@BoardColumn("backlog", "Backlog", tasks)
-		@BoardColumn("in_progress", "In Progress", tasks)
-		@BoardColumn("review", "Review", tasks)
-		@BoardColumn("done", "Done", tasks)
-	</div>
-}
-
-templ BoardColumn(columnKey string, columnTitle string, allTasks []*ent.Task) {
-	<div class="card bg-base-100 shadow-xl">
-		<div class="card-body">
-			<h3 class="card-title text-sm">{ columnTitle }</h3>
-			<div id={ "column-" + columnKey } class="space-y-2 min-h-[200px]">
-				for _, task := range allTasks {
-					if task.Column == columnKey {
-						@fragments.TaskCard(task)
+						
+						// Handle remove mode
+						if (mode === 'remove') {
+							const element = document.querySelector(selector);
+							if (element) {
+								element.remove();
+								console.log('[Board SSE] Removed', selector);
+							}
+							return;
+						}
+						
+						// Handle patch/append modes
+						if (html) {
+							if (selector) {
+								const target = document.querySelector(selector);
+								if (target) {
+									if (mode === 'append') {
+										// Append mode - add to end
+										const tempDiv = document.createElement('div');
+										tempDiv.innerHTML = html;
+										const newElement = tempDiv.firstElementChild;
+										if (newElement) {
+											target.appendChild(newElement);
+											console.log('[Board SSE] Appended to', selector);
+										}
+									} else {
+										// Outer mode - replace innerHTML
+										target.innerHTML = html;
+										console.log('[Board SSE] Patched', selector);
+									}
+								}
+							} else {
+								// No selector - replace element by ID
+								const tempDiv = document.createElement('div');
+								tempDiv.innerHTML = html;
+								const newElement = tempDiv.firstElementChild;
+								if (newElement && newElement.id) {
+									const oldElement = document.getElementById(newElement.id);
+									if (oldElement) {
+										oldElement.replaceWith(newElement);
+										console.log('[Board SSE] Replaced', newElement.id);
+									}
+								}
+							}
+						}
+					} catch (err) {
+						console.error('[Board SSE] Error processing patch:', err);
+					}
+				});
+				
+				
+				eventSource.onopen = () => {
+					console.log('[Board SSE] Connected');
+					if (reconnectTimer) {
+						clearTimeout(reconnectTimer);
+						reconnectTimer = null;
+					}
+				};
+				
+				eventSource.onerror = (err) => {
+					console.error('[Board SSE] Error:', err);
+					eventSource.close();
+					eventSource = null;
+					
+					// Reconnect after 3 seconds
+					if (!reconnectTimer) {
+						reconnectTimer = setTimeout(() => {
+							reconnectTimer = null;
+							connectSSE();
+						}, 3000);
+					}
+				};
+			}
+			
+			connectSSE();
+			
+			// Reconnect when page becomes visible or focused
+			document.addEventListener('visibilitychange', () => {
+				if (!document.hidden) {
+					// Check if connection is dead and reconnect
+					if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+						console.log('[Board SSE] Reconnecting after visibility change');
+						if (eventSource) {
+							eventSource.close();
+							eventSource = null;
+						}
+						connectSSE();
 					}
 				}
+			});
+			
+			window.addEventListener('focus', () => {
+				// Also check on window focus (tab switch)
+				if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+					console.log('[Board SSE] Reconnecting after focus');
+					if (eventSource) {
+						eventSource.close();
+						eventSource = null;
+					}
+					connectSSE();
+				}
+			});
+			
+			// Cleanup on unload
+			window.addEventListener('beforeunload', () => {
+				if (eventSource) {
+					eventSource.close();
+				}
+			});
+		});
+	</script>
+	<!-- Header with breadcrumbs and stats -->
+	<div class="navbar bg-base-100 border-b border-base-300">
+		<div class="flex-1">
+			<div class="breadcrumbs text-sm">
+				<ul>
+					<li><a class="link link-hover">🤖 botTaskTracker</a></li>
+					<li>Board</li>
+				</ul>
 			</div>
 		</div>
+		<div class="flex-none gap-2">
+			<!-- Stats badge -->
+			<div class="stats stats-horizontal shadow-sm bg-base-100">
+				<div class="stat p-3">
+					<div class="stat-title text-xs">Tasks</div>
+					<div class="stat-value text-lg">{ strconv.Itoa(len(tasks)) }</div>
+				</div>
+				<div class="stat p-3">
+					<div class="stat-title text-xs">In Progress</div>
+					<div class="stat-value text-lg text-warning">{ countTasksInColumn("in_progress", tasks) }</div>
+				</div>
+			</div>
+			<!-- Filter dropdown -->
+			<div class="dropdown dropdown-end">
+				<div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-2">
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+					</svg>
+					Filter
+				</div>
+				<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow-lg border border-base-300">
+					for _, assignee := range assignees {
+						<li>
+							<a href={ templ.URL("/?assignee=" + assignee) }>
+								<div class="avatar placeholder w-6 h-6">
+									<div class="bg-primary text-primary-content rounded-full w-6 h-6 text-xs">
+										{ string([]rune(assignee)[0]) }
+									</div>
+								</div>
+								{ assignee }
+							</a>
+						</li>
+					}
+					<li class="divider my-0"></li>
+					<li><a href="/?assignee=all">All assignees</a></li>
+				</ul>
+			</div>
+			<!-- Add Task Button -->
+			<button class="btn btn-primary btn-sm gap-2" data-on:click="@get('/datastar/tasks/add-form')">
+				<span>➕</span>
+				Add Task
+			</button>
+		</div>
 	</div>
+	<!-- Board -->
+	<div class="p-6 flex gap-4 overflow-x-auto">
+		@BoardColumn("backlog", "Backlog", "neutral", tasks)
+		@BoardColumn("in_progress", "In Progress", "warning", tasks)
+		@BoardColumn("review", "Review", "secondary", tasks)
+		@BoardColumn("done", "Done", "success", tasks)
+	</div>
+	<!-- Activity Stream -->
+	<div class="px-6 pb-6">
+		@fragments.ActivityFeed(activity)
+	</div>
+}
+
+templ BoardColumn(columnKey string, columnTitle string, statusColor string, allTasks []*ent.Task) {
+	<div class="swimlane min-w-[280px] flex-shrink-0">
+		<div class="swimlane-header flex items-center gap-2">
+			<div class="indicator">
+				<span class={ "indicator-item badge badge-xs", "badge-" + statusColor }></span>
+				if columnKey == "done" {
+					<div class={ "w-4 h-4 rounded-full", "bg-" + statusColor }></div>
+				} else if columnKey == "backlog" {
+					<div class="w-4 h-4 rounded-full border-2 border-base-300"></div>
+				} else {
+					<div class={ "w-4 h-4 rounded-full border-2", "bg-" + statusColor + "/20", "border-" + statusColor }></div>
+				}
+			</div>
+			<span class="font-semibold">{ columnTitle }</span>
+			<span class="badge badge-ghost badge-sm">
+				{ countTasksInColumn(columnKey, allTasks) }
+			</span>
+		</div>
+		<div id={ "column-" + columnKey } class="swimlane-content">
+			for _, task := range allTasks {
+				if task.Column == columnKey {
+					@fragments.TaskCard(task, columnKey)
+				}
+			}
+		</div>
+	</div>
+}
+
+func countTasksInColumn(column string, tasks []*ent.Task) string {
+	count := 0
+	for _, task := range tasks {
+		if task.Column == column {
+			count++
+		}
+	}
+	return strconv.Itoa(count)
 }

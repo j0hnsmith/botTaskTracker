@@ -1,0 +1,11 @@
+{"time":"2026-02-04T22:54:39.713596108Z","level":"INFO","msg":"starting server","addr":":7002"}
+{"time":"2026-02-04T22:54:39.713695298Z","level":"INFO","msg":"🚀 botTaskTracker running at http://localhost:7002"}
+{"time":"2026-02-04T22:54:47.238526467Z","level":"INFO","msg":"request","method":"GET","path":"/"}
+{"time":"2026-02-04T22:54:47.241437463Z","level":"INFO","msg":"render page","method":"GET","status":200,"path":"/"}
+{"time":"2026-02-04T22:54:49.522137141Z","level":"INFO","msg":"request","method":"GET","path":"/"}
+{"time":"2026-02-04T22:54:49.524529237Z","level":"INFO","msg":"render page","method":"GET","status":200,"path":"/"}
+{"time":"2026-02-04T22:54:49.543526443Z","level":"INFO","msg":"request","method":"GET","path":"/static/scripts/datastar.js"}
+{"time":"2026-02-04T22:54:49.54477817Z","level":"INFO","msg":"request","method":"GET","path":"/static/styles.css"}
+{"time":"2026-02-04T22:54:49.612780353Z","level":"INFO","msg":"request","method":"GET","path":"/favicon.ico"}
+{"time":"2026-02-04T22:54:55.623811316Z","level":"INFO","msg":"request","method":"GET","path":"/"}
+{"time":"2026-02-04T22:54:55.625905142Z","level":"INFO","msg":"render page","method":"GET","status":200,"path":"/"}
