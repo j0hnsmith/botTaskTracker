@@ -33,7 +33,89 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 			opacity: 0;
 			transition: opacity 0.15s;
 		}
+		
+		/* Drag-and-drop styles */
+		.sortable-ghost {
+			opacity: 0.4;
+			background: #f0f0f0;
+		}
+		.sortable-drag {
+			opacity: 0.5;
+			cursor: grabbing !important;
+		}
+		.sortable-chosen {
+			cursor: grabbing !important;
+		}
+		.swimlane-content.drag-over {
+			background: #e3f2fd;
+			border: 2px dashed #2196f3;
+		}
 	</style>
+	<!-- Drag-and-drop libraries -->
+	<script src="/static/scripts/sortable.min.js"></script>
+	<script src="/static/scripts/drag-drop.js"></script>
+	<!-- Real-time board updates via SSE -->
+	<script>
+		// Subscribe to board events on page load
+		document.addEventListener('DOMContentLoaded', function() {
+			let eventSource = null;
+			let reconnectTimeout = null;
+			let isConnecting = false;
+
+			function connectSSE() {
+				if (isConnecting) return;
+				isConnecting = true;
+
+				console.log('[Board SSE] Connecting...');
+				eventSource = new EventSource('/datastar/board/events');
+
+				eventSource.onopen = function() {
+					console.log('[Board SSE] Connected');
+					isConnecting = false;
+					// Clear any reconnect timeout
+					if (reconnectTimeout) {
+						clearTimeout(reconnectTimeout);
+						reconnectTimeout = null;
+					}
+				};
+
+				eventSource.onerror = function(err) {
+					console.error('[Board SSE] Error:', err);
+					isConnecting = false;
+					
+					if (eventSource) {
+						eventSource.close();
+						eventSource = null;
+					}
+
+					// Attempt to reconnect after 3 seconds
+					if (!reconnectTimeout) {
+						reconnectTimeout = setTimeout(function() {
+							reconnectTimeout = null;
+							connectSSE();
+						}, 3000);
+					}
+				};
+
+				// Handle visibility change - reconnect when page becomes visible
+				document.addEventListener('visibilitychange', function() {
+					if (!document.hidden && !eventSource) {
+						connectSSE();
+					}
+				});
+			}
+
+			// Initial connection
+			connectSSE();
+
+			// Cleanup on page unload
+			window.addEventListener('beforeunload', function() {
+				if (eventSource) {
+					eventSource.close();
+				}
+			});
+		});
+	</script>
 	<!-- Header with breadcrumbs and stats -->
 	<div class="navbar bg-base-100 border-b border-base-300">
 		<div class="flex-1">
