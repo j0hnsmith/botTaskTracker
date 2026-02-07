@@ -32,7 +32,8 @@ function initDragDrop() {
       onEnd: function(evt) {
         evt.item.style.opacity = '1';
         
-        const taskId = evt.item.dataset.taskId;
+        // Extract task ID from element id (e.g., "task-card-11" -> "11")
+        const taskId = evt.item.id.replace('task-card-', '');
         const fromColumn = evt.from.id.replace('column-', '');
         const toColumn = evt.to.id.replace('column-', '');
         const newPosition = evt.newIndex;
@@ -93,7 +94,8 @@ async function refreshColumn(columnKey) {
         onEnd: function(evt) {
           evt.item.style.opacity = '1';
           
-          const taskId = evt.item.dataset.taskId;
+          // Extract task ID from element id (e.g., "task-card-11" -> "11")
+          const taskId = evt.item.id.replace('task-card-', '');
           const fromColumn = evt.from.id.replace('column-', '');
           const toColumn = evt.to.id.replace('column-', '');
           const newPosition = evt.newIndex;

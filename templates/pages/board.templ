@@ -125,10 +125,10 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 							}
 						}
 						
-						// Ignore column patches if they have our own nonce (echo-back prevention)
-						if (selector && selector.startsWith('#column-') && window.lastSseNonce === window.clientNonce) {
-							console.log('[SSE] Ignoring own column patch (nonce match)');
-							window.lastSseNonce = null; // Clear after checking
+						// Ignore ALL patches if they have our own nonce (echo-back prevention)
+						if (window.lastSseNonce === window.clientNonce) {
+							console.log('[SSE] Ignoring own patch (nonce match)', selector);
+							// Don't clear nonce here - multiple events may come from same broadcast
 							return;
 						}
 						
