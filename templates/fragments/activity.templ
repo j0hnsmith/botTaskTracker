@@ -8,10 +8,7 @@ templ ActivityFeed(activity []*ent.TaskHistory) {
 		<div class="card-body p-4">
 			<div class="flex items-center justify-between mb-3">
 				<h3 class="card-title text-base">📋 Activity Stream</h3>
-				<div class="flex items-center gap-2">
-					<span id="activity-status" class="badge badge-ghost badge-sm">Live</span>
-					<span class="badge badge-ghost badge-sm">Last 30 events</span>
-				</div>
+				<span class="badge badge-ghost badge-sm">Last 30 events</span>
 			</div>
 			if len(activity) == 0 {
 				<div class="text-center text-gray-500 text-sm py-8">No activity yet</div>
@@ -25,124 +22,6 @@ templ ActivityFeed(activity []*ent.TaskHistory) {
 			}
 		</div>
 	</div>
-	<!-- SSE Connection for Activity Stream -->
-	<script>
-		document.addEventListener('DOMContentLoaded', () => {
-			let activitySource = null;
-			let activityReconnectTimer = null;
-			
-			function connectActivitySSE() {
-				if (activitySource) return;
-				
-				console.log('[Activity SSE] Connecting...');
-				activitySource = new EventSource('/datastar/activity/events');
-				
-				activitySource.addEventListener('datastar-patch-elements', (e) => {
-					console.log('[Activity SSE] Received patch-elements');
-					try {
-						const lines = e.data.split('\n');
-						let selector = '';
-						let mode = 'outer';
-						let html = '';
-						
-						for (const line of lines) {
-							if (line.startsWith('selector ')) {
-								selector = line.substring(9);
-							} else if (line.startsWith('mode ')) {
-								mode = line.substring(5);
-							} else if (line.startsWith('elements ')) {
-								html = line.substring(9);
-							}
-						}
-						
-						if (html && selector) {
-							const target = document.querySelector(selector);
-							if (target && mode === 'prepend') {
-								const tempDiv = document.createElement('div');
-								tempDiv.innerHTML = html;
-								const newElement = tempDiv.firstElementChild;
-								if (newElement) {
-									target.insertBefore(newElement, target.firstChild);
-									console.log('[Activity SSE] Prepended to', selector);
-								}
-							}
-						}
-					} catch (err) {
-						console.error('[Activity SSE] Error processing patch:', err);
-					}
-				});
-				
-				activitySource.addEventListener('datastar-execute-script', (e) => {
-					console.log('[Activity SSE] Received execute-script');
-					try {
-						const lines = e.data.split('\n');
-						for (const line of lines) {
-							if (line.startsWith('script ')) {
-								const script = line.substring(7);
-								eval(script);
-								console.log('[Activity SSE] Executed script');
-							}
-						}
-					} catch (err) {
-						console.error('[Activity SSE] Error executing script:', err);
-					}
-				});
-				
-				activitySource.onopen = () => {
-					console.log('[Activity SSE] Connected');
-					const statusBadge = document.getElementById('activity-status');
-					if (statusBadge) {
-						statusBadge.textContent = 'Live';
-						statusBadge.className = 'badge badge-success badge-sm';
-					}
-					if (activityReconnectTimer) {
-						clearTimeout(activityReconnectTimer);
-						activityReconnectTimer = null;
-					}
-				};
-				
-				activitySource.onerror = (err) => {
-					console.error('[Activity SSE] Error:', err);
-					activitySource.close();
-					activitySource = null;
-					
-					const statusBadge = document.getElementById('activity-status');
-					if (statusBadge) {
-						statusBadge.textContent = 'Reconnecting...';
-						statusBadge.className = 'badge badge-warning badge-sm';
-					}
-					
-					if (!activityReconnectTimer) {
-						activityReconnectTimer = setTimeout(() => {
-							activityReconnectTimer = null;
-							connectActivitySSE();
-						}, 3000);
-					}
-				};
-			}
-			
-			connectActivitySSE();
-			
-			// Reconnect when page becomes visible
-			document.addEventListener('visibilitychange', () => {
-				if (!document.hidden && (!activitySource || activitySource.readyState === EventSource.CLOSED)) {
-					console.log('[Activity SSE] Reconnecting after visibility change');
-					if (activitySource) {
-						activitySource.close();
-						activitySource = null;
-					}
-					connectActivitySSE();
-				}
-			});
-			
-			// Cleanup
-			window.addEventListener('beforeunload', () => {
-				if (activitySource) {
-					activitySource.close();
-				}
-			});
-		});
-	</script>
 }
 
 templ ActivityItem(entry *ent.TaskHistory, index int) {

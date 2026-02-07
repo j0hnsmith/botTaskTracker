@@ -14,78 +14,76 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-// BoardEvent represents a change to the board state
-type BoardEvent struct {
-	Type   string // "task_created", "task_updated", "task_moved", "task_deleted"
-	TaskID int
-	Column string
-}
-
-// ActivityEvent represents a change to the activity stream
-type ActivityEvent struct {
-	Type      string // "activity_created"
+// UnifiedEvent represents any event that can be broadcast (board or activity)
+type UnifiedEvent struct {
+	EventType string // "board" or "activity"
+	Type      string // "task_created", "task_updated", "task_moved", "task_deleted", "activity_created"
+	TaskID    int
 	HistoryID int
+	Column    string
 }
 
-// Broadcaster manages SSE connections and broadcasts board events
+// Broadcaster manages SSE connections and broadcasts unified events
 type Broadcaster struct {
-	mu              sync.RWMutex
-	boardClients    map[chan BoardEvent]bool
-	activityClients map[chan ActivityEvent]bool
+	mu      sync.RWMutex
+	clients map[chan UnifiedEvent]bool
 }
 
 // NewBroadcaster creates a new broadcaster
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
-		boardClients:    make(map[chan BoardEvent]bool),
-		activityClients: make(map[chan ActivityEvent]bool),
+		clients: make(map[chan UnifiedEvent]bool),
 	}
 }
 
-// Register adds a new board client to the broadcaster
-func (b *Broadcaster) Register(client chan BoardEvent) {
+// Register adds a new client to the broadcaster
+func (b *Broadcaster) Register(client chan UnifiedEvent) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.boardClients[client] = true
+	b.clients[client] = true
 }
 
-// Unregister removes a board client from the broadcaster
-func (b *Broadcaster) Unregister(client chan BoardEvent) {
+// Unregister removes a client from the broadcaster
+func (b *Broadcaster) Unregister(client chan UnifiedEvent) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if _, ok := b.boardClients[client]; ok {
-		delete(b.boardClients, client)
+	if _, ok := b.clients[client]; ok {
+		delete(b.clients, client)
 		close(client)
 	}
 }
 
-// RegisterActivity adds a new activity client to the broadcaster
-func (b *Broadcaster) RegisterActivity(client chan ActivityEvent) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.activityClients[client] = true
-}
-
-// UnregisterActivity removes an activity client from the broadcaster
-func (b *Broadcaster) UnregisterActivity(client chan ActivityEvent) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if _, ok := b.activityClients[client]; ok {
-		delete(b.activityClients, client)
-		close(client)
+// BroadcastBoard sends a board event to all connected clients
+func (b *Broadcaster) BroadcastBoard(taskID int, eventType, column string) {
+	event := UnifiedEvent{
+		EventType: "board",
+		Type:      eventType,
+		TaskID:    taskID,
+		Column:    column,
 	}
+	b.broadcast(event)
 }
 
-// Broadcast sends a board event to all connected board clients
-func (b *Broadcaster) Broadcast(event BoardEvent) {
+// BroadcastActivity sends an activity event to all connected clients
+func (b *Broadcaster) BroadcastActivity(historyID int) {
+	event := UnifiedEvent{
+		EventType: "activity",
+		Type:      "activity_created",
+		HistoryID: historyID,
+	}
+	b.broadcast(event)
+}
+
+// broadcast sends a unified event to all connected clients
+func (b *Broadcaster) broadcast(event UnifiedEvent) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	
-	clientCount := len(b.boardClients)
+	clientCount := len(b.clients)
 	sent := 0
 	skipped := 0
 	
-	for client := range b.boardClients {
+	for client := range b.clients {
 		select {
 		case client <- event:
 			sent++
@@ -97,51 +95,26 @@ func (b *Broadcaster) Broadcast(event BoardEvent) {
 	
 	// Log broadcast stats (will appear in systemd journal)
 	if clientCount > 0 {
-		println("Broadcast:", event.Type, "taskID:", event.TaskID, "clients:", clientCount, "sent:", sent, "skipped:", skipped)
+		println("Broadcast:", event.EventType, event.Type, "taskID:", event.TaskID, "historyID:", event.HistoryID, "clients:", clientCount, "sent:", sent, "skipped:", skipped)
 	}
 }
 
-// BroadcastActivity sends an activity event to all connected activity clients
-func (b *Broadcaster) BroadcastActivity(event ActivityEvent) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	
-	clientCount := len(b.activityClients)
-	sent := 0
-	skipped := 0
-	
-	for client := range b.activityClients {
-		select {
-		case client <- event:
-			sent++
-		default:
-			// Client channel is full, skip
-			skipped++
-		}
-	}
-	
-	// Log broadcast stats (will appear in systemd journal)
-	if clientCount > 0 {
-		println("BroadcastActivity:", event.Type, "historyID:", event.HistoryID, "clients:", clientCount, "sent:", sent, "skipped:", skipped)
-	}
-}
-
-// HandleBoardEvents handles SSE connections for board events
-func (s *Server) HandleBoardEvents(w http.ResponseWriter, r *http.Request) {
+// HandleEvents handles SSE connections for unified events (board + activity)
+func (s *Server) HandleEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	
 	// Create SSE writer
 	sse := datastar.NewSSE(w, r)
 	
 	// Create event channel for this client
-	eventChan := make(chan BoardEvent, 10)
+	eventChan := make(chan UnifiedEvent, 10)
 	
 	// Register client
 	s.Broadcaster.Register(eventChan)
 	defer s.Broadcaster.Unregister(eventChan)
 	
 	// Send initial connection message
-	_ = sse.PatchSignals([]byte(`{"boardConnected": true}`))
+	_ = sse.PatchSignals([]byte(`{"sseConnected": true}`))
 	
 	// Keepalive ticker to prevent connection timeouts
 	keepalive := time.NewTicker(30 * time.Second)
@@ -159,10 +132,16 @@ func (s *Server) HandleBoardEvents(w http.ResponseWriter, r *http.Request) {
 				f.Flush()
 			}
 		case event := <-eventChan:
-			// Handle the event based on type
-			// Don't return on error - log it and continue streaming
-			if err := s.handleBoardEvent(ctx, sse, event); err != nil {
-				println("handleBoardEvent error:", err.Error())
+			// Route event based on type
+			var err error
+			if event.EventType == "board" {
+				err = s.handleBoardEvent(ctx, sse, event)
+			} else if event.EventType == "activity" {
+				err = s.handleActivityEvent(ctx, sse, event)
+			}
+			
+			if err != nil {
+				println("handleEvent error:", err.Error())
 				// Continue the loop - don't close the SSE connection
 			}
 		}
@@ -170,7 +149,7 @@ func (s *Server) HandleBoardEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleBoardEvent processes a single board event and sends updates via SSE
-func (s *Server) handleBoardEvent(ctx context.Context, sse *datastar.ServerSentEventGenerator, event BoardEvent) error {
+func (s *Server) handleBoardEvent(ctx context.Context, sse *datastar.ServerSentEventGenerator, event UnifiedEvent) error {
 	println("handleBoardEvent:", event.Type, "taskID:", event.TaskID)
 	switch event.Type {
 	case "task_created":
@@ -249,50 +228,8 @@ func (s *Server) handleBoardEvent(ctx context.Context, sse *datastar.ServerSentE
 	return nil
 }
 
-// HandleActivityEvents handles SSE connections for activity stream events
-func (s *Server) HandleActivityEvents(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	
-	// Create SSE writer
-	sse := datastar.NewSSE(w, r)
-	
-	// Create event channel for this client
-	eventChan := make(chan ActivityEvent, 10)
-	
-	// Register client
-	s.Broadcaster.RegisterActivity(eventChan)
-	defer s.Broadcaster.UnregisterActivity(eventChan)
-	
-	// Send initial connection message
-	_ = sse.PatchSignals([]byte(`{"activityConnected": true}`))
-	
-	// Keepalive ticker to prevent connection timeouts
-	keepalive := time.NewTicker(30 * time.Second)
-	defer keepalive.Stop()
-	
-	// Listen for events or context cancellation
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-keepalive.C:
-			// Send keepalive comment to prevent timeout
-			w.Write([]byte(": keepalive\n\n"))
-			if f, ok := w.(http.Flusher); ok {
-				f.Flush()
-			}
-		case event := <-eventChan:
-			// Handle the event
-			if err := s.handleActivityEvent(ctx, sse, event); err != nil {
-				println("handleActivityEvent error:", err.Error())
-				// Continue the loop - don't close the SSE connection
-			}
-		}
-	}
-}
-
 // handleActivityEvent processes a single activity event and sends updates via SSE
-func (s *Server) handleActivityEvent(ctx context.Context, sse *datastar.ServerSentEventGenerator, event ActivityEvent) error {
+func (s *Server) handleActivityEvent(ctx context.Context, sse *datastar.ServerSentEventGenerator, event UnifiedEvent) error {
 	println("handleActivityEvent:", event.Type, "historyID:", event.HistoryID)
 	
 	switch event.Type {

@@ -62,9 +62,8 @@ func (s *Server) Routes(staticFS fs.FS) *http.ServeMux {
 	// Column content endpoint (for drag-drop refresh)
 	mux.HandleFunc("GET /columns/{column}", s.ColumnContentHandler)
 
-	// SSE endpoints for real-time updates
-	mux.HandleFunc("GET /datastar/board/events", s.HandleBoardEvents)
-	mux.HandleFunc("GET /datastar/activity/events", s.HandleActivityEvents)
+	// SSE endpoint for unified real-time updates (board + activity)
+	mux.HandleFunc("GET /datastar/events", s.HandleEvents)
 
 	// Datastar SSE routes for tasks
 	mux.HandleFunc("GET /datastar/tasks/add-form", s.TaskAddFormHandler)

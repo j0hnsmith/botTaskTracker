@@ -1,5 +1,5 @@
 // Drag-and-drop functionality for botTaskTracker kanban board
-// Using SortableJS with Datastar SSE updates
+// Using SortableJS with simple column refresh after updates
 
 function initDragDrop() {
   const columns = ['backlog', 'in_progress', 'review', 'done'];
@@ -36,7 +36,7 @@ function initDragDrop() {
         
         // Update if column changed OR position changed within same column
         if (fromColumn !== toColumn) {
-          updateTaskColumn(taskId, toColumn, newPosition);
+          updateTaskColumn(taskId, toColumn, newPosition, fromColumn);
         } else if (evt.oldIndex !== newPosition) {
           updateTaskPosition(taskId, toColumn, newPosition);
         }
@@ -45,78 +45,73 @@ function initDragDrop() {
   });
 }
 
-// Process SSE events from the response stream
-async function processSSEStream(response) {
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n\n');
-    
-    // Keep the last incomplete event in buffer
-    buffer = lines.pop();
-    
-    for (const eventBlock of lines) {
-      if (!eventBlock.trim()) continue;
-      
-      const eventLines = eventBlock.split('\n');
-      let eventType = '';
-      let eventData = '';
-      
-      for (const line of eventLines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.substring(7);
-        } else if (line.startsWith('data: ')) {
-          eventData += line.substring(6) + '\n';
-        }
-      }
-      
-      // Process datastar-patch-elements events
-      if (eventType === 'datastar-patch-elements' && eventData) {
-        // Extract HTML from the data
-        const dataLines = eventData.trim().split('\n');
-        let html = '';
-        for (const line of dataLines) {
-          if (line.startsWith('elements ')) {
-            html += line.substring(9) + '\n';
-          } else {
-            html += line + '\n';
-          }
-        }
-        
-        // Parse and update the DOM
-        if (html.trim()) {
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = html.trim();
-          const newElement = tempDiv.firstElementChild;
-          
-          if (newElement && newElement.id) {
-            const oldElement = document.getElementById(newElement.id);
-            if (oldElement && oldElement.parentNode) {
-              oldElement.parentNode.replaceChild(newElement, oldElement);
-              // Re-initialize drag-drop after DOM update
-              setTimeout(initDragDrop, 50);
-            }
-          }
-        }
-      }
+// Fetch and replace a column's content
+async function refreshColumn(columnKey) {
+  try {
+    const response = await fetch(`/columns/${columnKey}`);
+    if (!response.ok) {
+      console.error(`Failed to refresh column ${columnKey}:`, response.statusText);
+      return;
     }
+    
+    const html = await response.text();
+    const columnEl = document.getElementById('column-' + columnKey);
+    
+    if (columnEl) {
+      // Replace the column content
+      columnEl.innerHTML = html;
+      
+      // Re-initialize drag-drop for this column
+      const sortableInstance = Sortable.get(columnEl);
+      if (sortableInstance) {
+        sortableInstance.destroy();
+      }
+      
+      // Re-create the sortable instance
+      new Sortable(columnEl, {
+        group: 'kanban',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        dragClass: 'sortable-drag',
+        chosenClass: 'sortable-chosen',
+        handle: '.task-card',
+        
+        onChoose: function(evt) {
+          evt.item.style.opacity = '0.5';
+        },
+        
+        onUnchoose: function(evt) {
+          evt.item.style.opacity = '1';
+        },
+        
+        onEnd: function(evt) {
+          evt.item.style.opacity = '1';
+          
+          const taskId = evt.item.dataset.taskId;
+          const fromColumn = evt.from.id.replace('column-', '');
+          const toColumn = evt.to.id.replace('column-', '');
+          const newPosition = evt.newIndex;
+          
+          if (fromColumn !== toColumn) {
+            updateTaskColumn(taskId, toColumn, newPosition, fromColumn);
+          } else if (evt.oldIndex !== newPosition) {
+            updateTaskPosition(taskId, toColumn, newPosition);
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error(`Error refreshing column ${columnKey}:`, error);
   }
 }
 
 // Send PATCH request to update task column
-async function updateTaskColumn(taskId, newColumn, newPosition) {
+async function updateTaskColumn(taskId, newColumn, newPosition, oldColumn) {
   try {
     const response = await fetch(`/datastar/tasks/${taskId}/column`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
         column: newColumn,
@@ -126,16 +121,27 @@ async function updateTaskColumn(taskId, newColumn, newPosition) {
     
     if (!response.ok) {
       console.error('Failed to update task column:', response.statusText);
-      window.location.reload();
+      // Refresh both columns to revert the UI change
+      await Promise.all([
+        refreshColumn(oldColumn),
+        refreshColumn(newColumn)
+      ]);
       return;
     }
     
-    // Process the SSE event stream
-    await processSSEStream(response);
+    // Success - refresh both affected columns to show persisted state
+    await Promise.all([
+      refreshColumn(oldColumn),
+      refreshColumn(newColumn)
+    ]);
     
   } catch (error) {
     console.error('Error updating task column:', error);
-    window.location.reload();
+    // Refresh both columns to revert the UI change
+    await Promise.all([
+      refreshColumn(oldColumn),
+      refreshColumn(newColumn)
+    ]);
   }
 }
 
@@ -145,8 +151,7 @@ async function updateTaskPosition(taskId, column, newPosition) {
     const response = await fetch(`/datastar/tasks/${taskId}/position`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
         column: column,
@@ -156,16 +161,18 @@ async function updateTaskPosition(taskId, column, newPosition) {
     
     if (!response.ok) {
       console.error('Failed to update task position:', response.statusText);
-      window.location.reload();
+      // Refresh column to revert the UI change
+      await refreshColumn(column);
       return;
     }
     
-    // Process the SSE event stream
-    await processSSEStream(response);
+    // Success - refresh column to show persisted state
+    await refreshColumn(column);
     
   } catch (error) {
     console.error('Error updating task position:', error);
-    window.location.reload();
+    // Refresh column to revert the UI change
+    await refreshColumn(column);
   }
 }
 

@@ -208,10 +208,7 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "failed to create history", "error", err)
 	} else {
 		// Broadcast activity update
-		s.Broadcaster.BroadcastActivity(ActivityEvent{
-			Type:      "activity_created",
-			HistoryID: historyEntry.ID,
-		})
+		s.Broadcaster.BroadcastActivity(historyEntry.ID)
 	}
 
 	// Parse and add tags
@@ -251,11 +248,7 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_created",
-		TaskID: newTask.ID,
-		Column: column,
-	})
+	s.Broadcaster.BroadcastBoard(newTask.ID, "task_created", column)
 
 	// Clear error, append card to column, close modal
 	_ = sse.PatchElements(`<div id="add-error" class="text-error text-sm hidden"></div>`)
@@ -427,10 +420,7 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		Save(ctx)
 	if err == nil {
 		// Broadcast activity update
-		s.Broadcaster.BroadcastActivity(ActivityEvent{
-			Type:      "activity_created",
-			HistoryID: historyEntry.ID,
-		})
+		s.Broadcaster.BroadcastActivity(historyEntry.ID)
 	}
 
 	// Update tags
@@ -466,11 +456,7 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_updated",
-		TaskID: updatedTask.ID,
-		Column: updatedTask.Column,
-	})
+	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_updated", updatedTask.Column)
 
 	_ = sse.PatchElements(`<div id="edit-error" class="text-error text-sm hidden"></div>`)
 	_ = sse.PatchElements(htmlBuilder.String())
@@ -499,10 +485,7 @@ func (s *Server) TaskDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_deleted",
-		TaskID: id,
-	})
+	s.Broadcaster.BroadcastBoard(id, "task_deleted", "")
 
 	_ = sse.RemoveElement("#task-card-" + strconv.Itoa(id))
 }
@@ -565,10 +548,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		slog.ErrorContext(ctx, "failed to create history for column update", "error", err)
 	} else {
 		// Broadcast activity update
-		s.Broadcaster.BroadcastActivity(ActivityEvent{
-			Type:      "activity_created",
-			HistoryID: historyEntry.ID,
-		})
+		s.Broadcaster.BroadcastActivity(historyEntry.ID)
 	}
 
 	// Reload task with edges
@@ -598,11 +578,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_moved",
-		TaskID: updatedTask.ID,
-		Column: newColumn,
-	})
+	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_moved", newColumn)
 
 	slog.InfoContext(ctx, "task column updated via drag-drop", 
 		"task_id", id, 
@@ -674,11 +650,7 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_reordered",
-		TaskID: id,
-		Column: column,
-	})
+	s.Broadcaster.BroadcastBoard(id, "task_reordered", column)
 
 	slog.InfoContext(ctx, "task position updated within column", 
 		"task_id", id, 
