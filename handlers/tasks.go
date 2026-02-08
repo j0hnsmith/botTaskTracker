@@ -20,6 +20,41 @@ import (
 	"github.com/j0hnsmith/botTaskTracker/templates/pages"
 )
 
+// ColumnContentHandler returns the HTML content for a single column.
+// Used by drag-drop JavaScript to refresh columns after updates.
+func (s *Server) ColumnContentHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	column := r.PathValue("column")
+
+	// Validate column
+	column = sanitizeColumn(column)
+
+	// Get all tasks in the column
+	tasks, err := s.Client.Task.Query().
+		Where(task.ColumnEQ(column)).
+		WithTags().
+		WithHistory(func(q *ent.TaskHistoryQuery) {
+			q.Order(ent.Desc(taskhistory.FieldCreatedAt))
+		}).
+		Order(ent.Asc(task.FieldPosition), ent.Asc(task.FieldCreatedAt)).
+		All(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get tasks for column", "column", column, "error", err)
+		http.Error(w, "Failed to load column", http.StatusInternalServerError)
+		return
+	}
+
+	// Render all task cards
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	for _, t := range tasks {
+		if err := fragments.TaskCard(t, column).Render(ctx, w); err != nil {
+			slog.ErrorContext(ctx, "failed to render task card", "task_id", t.ID, "error", err)
+			http.Error(w, "Failed to render task", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 // BoardViewHandler handles the main kanban board page.
 func (s *Server) BoardViewHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -163,7 +198,7 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create history entry
-	_, err = s.Client.TaskHistory.Create().
+	historyEntry, err := s.Client.TaskHistory.Create().
 		SetTaskID(newTask.ID).
 		SetAction("created").
 		SetDetails(fmt.Sprintf("created in %s", column)).
@@ -171,6 +206,9 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Save(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create history", "error", err)
+	} else {
+		// Broadcast activity update
+		s.Broadcaster.BroadcastActivity(historyEntry.ID)
 	}
 
 	// Parse and add tags
@@ -210,11 +248,7 @@ func (s *Server) TaskCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_created",
-		TaskID: newTask.ID,
-		Column: column,
-	})
+	s.Broadcaster.BroadcastBoard(newTask.ID, "task_created", column, "")
 
 	// Clear error, append card to column, close modal
 	_ = sse.PatchElements(`<div id="add-error" class="text-error text-sm hidden"></div>`)
@@ -378,12 +412,16 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create history entry
-	_, _ = s.Client.TaskHistory.Create().
+	historyEntry, err := s.Client.TaskHistory.Create().
 		SetTaskID(updatedTask.ID).
 		SetAction("updated").
 		SetDetails("updated task").
 		SetActor(signals.Assignee).
 		Save(ctx)
+	if err == nil {
+		// Broadcast activity update
+		s.Broadcaster.BroadcastActivity(historyEntry.ID)
+	}
 
 	// Update tags
 	_, _ = s.Client.TaskTag.Delete().Where(tasktag.HasTaskWith(task.IDEQ(updatedTask.ID))).Exec(ctx)
@@ -418,11 +456,7 @@ func (s *Server) TaskUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_updated",
-		TaskID: updatedTask.ID,
-		Column: updatedTask.Column,
-	})
+	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_updated", updatedTask.Column, "")
 
 	_ = sse.PatchElements(`<div id="edit-error" class="text-error text-sm hidden"></div>`)
 	_ = sse.PatchElements(htmlBuilder.String())
@@ -451,10 +485,7 @@ func (s *Server) TaskDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_deleted",
-		TaskID: id,
-	})
+	s.Broadcaster.BroadcastBoard(id, "task_deleted", "", "")
 
 	_ = sse.RemoveElement("#task-card-" + strconv.Itoa(id))
 }
@@ -469,6 +500,9 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Extract client nonce from header
+	clientNonce := r.Header.Get("X-Client-Nonce")
+
 	// Read column and position from request body
 	type ColumnUpdate struct {
 		Column   string `json:"column"`
@@ -480,9 +514,6 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Create SSE response
-	sse := datastar.NewSSE(w, r)
-
 	// Get existing task
 	existingTask, err := s.Client.Task.Query().
 		Where(task.IDEQ(id)).
@@ -491,7 +522,7 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		Only(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to find task for column update", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Task not found", http.StatusNotFound)
 		return
 	}
 
@@ -501,13 +532,13 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 	// Update task column and reorder positions
 	if err := reorderTasksOnColumnChange(ctx, s.Client, id, oldColumn, newColumn, update.Position); err != nil {
 		slog.ErrorContext(ctx, "failed to reorder tasks", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Failed to update task", http.StatusInternalServerError)
 		return
 	}
 
 	// Create history entry
 	details := fmt.Sprintf("moved from %s to %s", oldColumn, newColumn)
-	_, err = s.Client.TaskHistory.Create().
+	historyEntry, err := s.Client.TaskHistory.Create().
 		SetTaskID(id).
 		SetAction("moved").
 		SetDetails(details).
@@ -515,6 +546,9 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		Save(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create history for column update", "error", err)
+	} else {
+		// Broadcast activity update
+		s.Broadcaster.BroadcastActivity(historyEntry.ID)
 	}
 
 	// Reload task with edges
@@ -525,36 +559,26 @@ func (s *Server) TaskColumnUpdateHandler(w http.ResponseWriter, r *http.Request)
 		Only(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to reload task", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Failed to reload task", http.StatusInternalServerError)
 		return
 	}
 
-	// Render the entire column to reflect reordering
-	if err := renderColumnUpdate(ctx, sse, s.Client, newColumn); err != nil {
-		slog.ErrorContext(ctx, "failed to render column update", "error", err)
-		_ = sse.ConsoleError(err)
-		return
-	}
+	// Don't send direct SSE response - let the broadcast handle ALL updates
+	// The nonce check will prevent echo-back to the originating client
+	// Other clients will receive and apply the broadcast
 
-	// Also render old column if different
-	if oldColumn != newColumn {
-		if err := renderColumnUpdate(ctx, sse, s.Client, oldColumn); err != nil {
-			slog.ErrorContext(ctx, "failed to render old column", "error", err)
-		}
-	}
-
-	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_moved",
-		TaskID: updatedTask.ID,
-		Column: newColumn,
-	})
+	// Broadcast event to all clients (originator will ignore due to nonce match)
+	s.Broadcaster.BroadcastBoard(updatedTask.ID, "task_moved", newColumn, clientNonce)
 
 	slog.InfoContext(ctx, "task column updated via drag-drop", 
 		"task_id", id, 
 		"from", oldColumn, 
 		"to", newColumn,
-		"position", update.Position)
+		"position", update.Position,
+		"nonce", clientNonce)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
 }
 
 // TaskPositionUpdateHandler updates a task's position within the same column.
@@ -567,6 +591,9 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Extract client nonce from header
+	clientNonce := r.Header.Get("X-Client-Nonce")
+
 	// Read position from request body
 	type PositionUpdate struct {
 		Column   string `json:"column"`
@@ -578,16 +605,13 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Create SSE response
-	sse := datastar.NewSSE(w, r)
-
 	// Get existing task
 	existingTask, err := s.Client.Task.Query().
 		Where(task.IDEQ(id)).
 		Only(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to find task for position update", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Task not found", http.StatusNotFound)
 		return
 	}
 
@@ -596,11 +620,11 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 	// Reorder tasks within the same column
 	if err := reorderTasksInColumn(ctx, s.Client, id, column, update.Position); err != nil {
 		slog.ErrorContext(ctx, "failed to reorder tasks in column", "error", err)
-		_ = sse.ConsoleError(err)
+		http.Error(w, "Failed to update position", http.StatusInternalServerError)
 		return
 	}
 
-	// Create history entry
+	// Create history entry (note: reordering within column doesn't create activity - too noisy)
 	_, err = s.Client.TaskHistory.Create().
 		SetTaskID(id).
 		SetAction("reordered").
@@ -610,25 +634,23 @@ func (s *Server) TaskPositionUpdateHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create history for position update", "error", err)
 	}
+	// Note: We don't broadcast activity for reordering - it's too noisy and less meaningful
 
-	// Render the entire column to reflect reordering
-	if err := renderColumnUpdate(ctx, sse, s.Client, column); err != nil {
-		slog.ErrorContext(ctx, "failed to render column update", "error", err)
-		_ = sse.ConsoleError(err)
-		return
-	}
+	// Don't send direct SSE response - let the broadcast handle ALL updates
+	// The nonce check will prevent echo-back to the originating client
+	// Other clients will receive and apply the broadcast
 
-	// Broadcast event to other clients
-	s.Broadcaster.Broadcast(BoardEvent{
-		Type:   "task_reordered",
-		TaskID: id,
-		Column: column,
-	})
+	// Broadcast event to all clients (originator will ignore due to nonce match)
+	s.Broadcaster.BroadcastBoard(id, "task_reordered", column, clientNonce)
 
 	slog.InfoContext(ctx, "task position updated within column", 
 		"task_id", id, 
 		"column", column,
-		"new_position", update.Position)
+		"new_position", update.Position,
+		"nonce", clientNonce)
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
 }
 
 // Stub handlers for move, assign, tag operations

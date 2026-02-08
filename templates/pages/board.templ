@@ -54,25 +54,60 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 	<!-- Drag-and-drop libraries -->
 	<script src="/static/scripts/sortable.min.js"></script>
 	<script src="/static/scripts/drag-drop.js"></script>
-	<!-- Real-time board updates via SSE -->
+	<!-- Real-time updates via unified SSE connection -->
 	<script>
+		// Generate unique client nonce BEFORE SSE connects (needed for echo-back prevention)
+		if (!window.clientNonce) {
+			window.clientNonce = Date.now().toString(36) + Math.random().toString(36).substr(2);
+			console.log('[SSE] Client nonce:', window.clientNonce);
+		}
+		
 		document.addEventListener('DOMContentLoaded', () => {
 			let eventSource = null;
 			let reconnectTimer = null;
 			
+			function updateStatusBadge(status) {
+				const badge = document.getElementById('sse-status');
+				if (badge) {
+					if (status === 'connected') {
+						badge.textContent = 'Live';
+						badge.className = 'badge badge-success badge-sm';
+					} else if (status === 'reconnecting') {
+						badge.textContent = 'Reconnecting...';
+						badge.className = 'badge badge-warning badge-sm';
+					} else {
+						badge.textContent = 'Offline';
+						badge.className = 'badge badge-ghost badge-sm';
+					}
+				}
+			}
+			
 			function connectSSE() {
 				if (eventSource) return;
 				
-				console.log('[Board SSE] Connecting...');
-				eventSource = new EventSource('/datastar/board/events');
+				console.log('[SSE] Connecting to unified endpoint...');
+				eventSource = new EventSource('/datastar/events');
 				
 				eventSource.addEventListener('datastar-patch-signals', (e) => {
-					console.log('[Board SSE] Received patch-signals:', e.data);
-					// Parse and apply signal updates if needed
+					console.log('[SSE] Received patch-signals:', e.data);
+					// Parse signals to extract lastEventNonce
+					try {
+						const data = e.data;
+						if (data.includes('signals ')) {
+							const signalsJson = data.split('signals ')[1];
+							const signals = JSON.parse(signalsJson);
+							if (signals && signals.lastEventNonce) {
+								window.lastSseNonce = signals.lastEventNonce;
+								console.log('[SSE] Event nonce:', signals.lastEventNonce);
+							}
+						}
+					} catch (err) {
+						// Ignore parse errors
+					}
 				});
 				
 				eventSource.addEventListener('datastar-patch-elements', (e) => {
-					console.log('[Board SSE] Received patch-elements');
+					console.log('[SSE] Received patch-elements');
 					try {
 						// Parse the SSE data
 						const lines = e.data.split('\n');
@@ -90,17 +125,24 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 							}
 						}
 						
+						// Ignore ALL patches if they have our own nonce (echo-back prevention)
+						if (window.lastSseNonce === window.clientNonce) {
+							console.log('[SSE] Ignoring own patch (nonce match)', selector);
+							// Don't clear nonce here - multiple events may come from same broadcast
+							return;
+						}
+						
 						// Handle remove mode
 						if (mode === 'remove') {
 							const element = document.querySelector(selector);
 							if (element) {
 								element.remove();
-								console.log('[Board SSE] Removed', selector);
+								console.log('[SSE] Removed', selector);
 							}
 							return;
 						}
 						
-						// Handle patch/append modes
+						// Handle patch/append/prepend modes
 						if (html) {
 							if (selector) {
 								const target = document.querySelector(selector);
@@ -112,12 +154,21 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 										const newElement = tempDiv.firstElementChild;
 										if (newElement) {
 											target.appendChild(newElement);
-											console.log('[Board SSE] Appended to', selector);
+											console.log('[SSE] Appended to', selector);
+										}
+									} else if (mode === 'prepend') {
+										// Prepend mode - add to start
+										const tempDiv = document.createElement('div');
+										tempDiv.innerHTML = html;
+										const newElement = tempDiv.firstElementChild;
+										if (newElement) {
+											target.insertBefore(newElement, target.firstChild);
+											console.log('[SSE] Prepended to', selector);
 										}
 									} else {
 										// Outer mode - replace innerHTML
 										target.innerHTML = html;
-										console.log('[Board SSE] Patched', selector);
+										console.log('[SSE] Patched', selector);
 									}
 								}
 							} else {
@@ -129,19 +180,35 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 									const oldElement = document.getElementById(newElement.id);
 									if (oldElement) {
 										oldElement.replaceWith(newElement);
-										console.log('[Board SSE] Replaced', newElement.id);
+										console.log('[SSE] Replaced', newElement.id);
 									}
 								}
 							}
 						}
 					} catch (err) {
-						console.error('[Board SSE] Error processing patch:', err);
+						console.error('[SSE] Error processing patch:', err);
 					}
 				});
 				
+				eventSource.addEventListener('datastar-execute-script', (e) => {
+					console.log('[SSE] Received execute-script');
+					try {
+						const lines = e.data.split('\n');
+						for (const line of lines) {
+							if (line.startsWith('script ')) {
+								const script = line.substring(7);
+								eval(script);
+								console.log('[SSE] Executed script');
+							}
+						}
+					} catch (err) {
+						console.error('[SSE] Error executing script:', err);
+					}
+				});
 				
 				eventSource.onopen = () => {
-					console.log('[Board SSE] Connected');
+					console.log('[SSE] Connected');
+					updateStatusBadge('connected');
 					if (reconnectTimer) {
 						clearTimeout(reconnectTimer);
 						reconnectTimer = null;
@@ -149,9 +216,10 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 				};
 				
 				eventSource.onerror = (err) => {
-					console.error('[Board SSE] Error:', err);
+					console.error('[SSE] Error:', err);
 					eventSource.close();
 					eventSource = null;
+					updateStatusBadge('reconnecting');
 					
 					// Reconnect after 3 seconds
 					if (!reconnectTimer) {
@@ -170,7 +238,7 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 				if (!document.hidden) {
 					// Check if connection is dead and reconnect
 					if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
-						console.log('[Board SSE] Reconnecting after visibility change');
+						console.log('[SSE] Reconnecting after visibility change');
 						if (eventSource) {
 							eventSource.close();
 							eventSource = null;
@@ -183,7 +251,7 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 			window.addEventListener('focus', () => {
 				// Also check on window focus (tab switch)
 				if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
-					console.log('[Board SSE] Reconnecting after focus');
+					console.log('[SSE] Reconnecting after focus');
 					if (eventSource) {
 						eventSource.close();
 						eventSource = null;
@@ -211,6 +279,8 @@ templ BoardContent(tasks []*ent.Task, activity []*ent.TaskHistory, assignees []s
 			</div>
 		</div>
 		<div class="flex-none gap-2">
+			<!-- Connection status badge -->
+			<span id="sse-status" class="badge badge-ghost badge-sm">Connecting...</span>
 			<!-- Stats badge -->
 			<div class="stats stats-horizontal shadow-sm bg-base-100">
 				<div class="stat p-3">
